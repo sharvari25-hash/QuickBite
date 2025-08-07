@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 
 export default function Modal({ isOpen, onClose, title, children }) {
+
   if (!isOpen) return null;
 
   return (

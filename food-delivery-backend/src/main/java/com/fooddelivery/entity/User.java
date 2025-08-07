@@ -9,7 +9,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fooddelivery.enums.RoleType;
 import jakarta.persistence.*;
-import lombok.*;
 
 @Entity
 @Table(name = "user")
@@ -26,7 +25,10 @@ public class User implements UserDetails{
     private String password;
 
     private String name;
+
     private String mobileNumber;
+
+    private String phone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -72,12 +74,21 @@ public class User implements UserDetails{
 		this.name = name;
 	}
 
+
 		public String getMobileNumber() {
 		return mobileNumber;
 	}
 
 	public void setMobileNumber(String mobileNumber) {
 		this.mobileNumber = mobileNumber;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
 	}
 
 	public RoleType getRole() {

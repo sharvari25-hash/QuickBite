@@ -35,6 +35,7 @@ public class RestaurantService {
         // We must cast the objects from the map to their correct type (String)
         user.setName((String) payload.get("name"));
         user.setEmail((String) payload.get("email"));
+
         user.setMobileNumber((String) payload.get("mobileNumber"));
         
         // 2. Hash the password from the Map. This is critical.

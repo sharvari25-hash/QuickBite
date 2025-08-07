@@ -3,6 +3,7 @@ package com.fooddelivery.service;
 import java.util.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +20,6 @@ public class DeliveryDetailsService {
 
 		@Autowired
 		private DeliveryDetailsRepository deliveryRepository;
-		
 		@Autowired
 		private PasswordEncoder passwordEncoder;
 		
@@ -54,11 +54,12 @@ public class DeliveryDetailsService {
 	        // 6. Save the new User first.
 	        userRepository.save(user);
 	        
-	        // 7. Save and return the new DeliveryDetails record.
+	     // 7. Save and return the new DeliveryDetails record.
 	        //    JPA will correctly handle the foreign key relationship.
-	        return deliveryRepository.save(deliveryDetails);
-	    }
+			return deliveryRepository.save(deliveryDetails);
+		}
 
+	        
 	    public Optional<DeliveryDetails> getById(Long id) {
 	        return deliveryRepository.findById(id);
 	    }

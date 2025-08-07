@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+
 import { X, Mail, Lock, User, Eye, EyeOff, Phone } from "lucide-react"
+import { X, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "../contexts/AuthContext"
 
 export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
@@ -95,6 +97,7 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
             return;
         }
 
+
         const { role, name, mobileNumber, email, password } = formData;
         let registrationResponse;
         let payload;
@@ -148,6 +151,9 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
         // It correctly passes the token for the next request
         await apiPost(`${API_BASE_URL}/api/auth/register/address`, addressPayload, registrationResponse.token);
     }}
+
+            payload = { name, email, password, roleType: 'CUSTOMER' };
+            registrationResponse = await apiPost(`${API_BASE_URL}/api/auth/register`, payload);
             break;
         }
         
@@ -475,7 +481,7 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
               </div>
             )}
 
-             {mode === "signup" && (
+            {mode === "signup" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
                 <div className="relative">

@@ -13,52 +13,60 @@ import com.fooddelivery.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import com.fooddelivery.entity.AddressDetails;
+import com.fooddelivery.repository.AddressDetailsRepository;
+
 @Service
 public class AddressDetailsService {
 
 	@Autowired
 	private AddressDetailsRepository addressRepository;
 	
+
 	@Autowired 
 	private UserRepository userRepository;
 	
 	@Transactional
-    public AddressDetails addAddress(Map<String, Object> payload) {
-        
-        // 1. Get the user_id from the payload and find the existing User.
-        // This is the most critical step.
-        Object userIdObj = payload.get("user_id");
-        if (userIdObj == null) {
-            throw new IllegalArgumentException("Error: 'user_id' is missing from the payload.");
-        }
-        // The ID might come in as an Integer, so casting to Number is safest.
-        Long userId = ((Number) userIdObj).longValue();
+	public AddressDetails addAddress(Map<String, Object> payload) {
+	    
+	    // 1. Get the user_id from the payload and find the existing User.
+	    // This part is perfect.
+	    Object userIdObj = payload.get("user_id");
+	    if (userIdObj == null) {
+	        throw new IllegalArgumentException("Error: 'user_id' is missing from the payload.");
+	    }
+	    Long userId = ((Number) userIdObj).longValue();
+	    User existingUser = userRepository.findById(userId)
+	            .orElseThrow(() -> new IllegalArgumentException("Cannot create address. User not found with id: " + userId));
 
-        User existingUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cannot create address. User not found with id: " + userId));
+	    // 2. Manually create the AddressDetails object from the Map payload.
+	    // This part is perfect.
+	    AddressDetails address = new AddressDetails();
+	    address.setLabel((String) payload.get("label"));
+	    address.setStreet((String) payload.get("street"));
+	    address.setCity((String) payload.get("city"));
+	    address.setState((String) payload.get("state"));
+	    address.setCountry((String) payload.get("country"));
+	    address.setPostalCode((String) payload.get("postal_code"));
+	    Boolean isDefault = (Boolean) payload.get("is_default");
+	    address.setDefault(isDefault != null && isDefault);
 
-        // 2. Manually create the AddressDetails object from the Map payload.
-        AddressDetails address = new AddressDetails();
-        address.setLabel((String) payload.get("label"));
-        address.setStreet((String) payload.get("street"));
-        address.setCity((String) payload.get("city"));
-        address.setState((String) payload.get("state"));
-        address.setCountry((String) payload.get("country"));
-        
-        // Match the snake_case keys sent by the frontend
-        address.setPostalCode((String) payload.get("postal_code"));
+	    // 3. Link the new Address to the existing User.
+	    // This part is perfect.
+	    address.setUser(existingUser);
 
-        // Handle the boolean value for is_default, providing a fallback
-        Boolean isDefault = (Boolean) payload.get("is_default");
-        address.setDefault(isDefault != null && isDefault);
-
-        // 3. Link the new Address to the existing User.
-        // This sets the foreign key relationship.
-        address.setUser(existingUser);
+	    // 4. --- THE MISSING STEP ---
+	    // Save the fully prepared address object to the database and return it.
+	    return addressRepository.save(address);
+	}
 
         // 4. Save the new AddressDetails entity.
         // Because we are in a @Transactional method, the operation is atomic.
         // We don't need to save the user again since it already exists.
+
+    public AddressDetails addAddress(AddressDetails address) {
         return addressRepository.save(address);
     }
 

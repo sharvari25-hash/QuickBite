@@ -62,7 +62,10 @@ public class UserService implements UserDetailsService{
 
         existing.setName(updatedUser.getName());
         existing.setEmail(updatedUser.getEmail());
+
         existing.setMobileNumber(updatedUser.getMobileNumber());
+
+        existing.setPhone(updatedUser.getPhone());
         existing.setRole(updatedUser.getRole());
         // Update other fields as needed
 
