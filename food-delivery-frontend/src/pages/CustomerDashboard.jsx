@@ -24,10 +24,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback } from "react";
 
-// ... (keep all your mock data, hooks, and functions as they are)
-
-// FIX: Ensure unique IDs for mock data to avoid "Encountered two children with the same key" warnings.
-// This is a separate warning, but good to fix while addressing the main error.
+// Mock data with unique IDs
 const mockRestaurants = [
   {
     id: 1,
