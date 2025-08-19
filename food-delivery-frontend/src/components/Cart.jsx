@@ -1,100 +1,143 @@
-import { useState } from 'react';
-import { ShoppingCart, Plus, Minus, CreditCard, Landmark, Smartphone, CheckCircle } from 'lucide-react';
+"use client";
 
-// --- MAIN CART COMPONENT (Controller) ---
-export default function Cart({ cart, onAddToCart, onRemoveFromCart, onBrowse, onOrderSuccess }) {
-  // This state lives inside the Cart component and controls the flow
-  const [checkoutStep, setCheckoutStep] = useState('cart'); // 'cart', 'payment', 'success'
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from "../contexts/AuthContext";
+import axios from "axios";
+// ★★★ THIS IS THE CORRECTED IMPORT LINE ★★★
+import { 
+    ShoppingCart, Plus, Minus, CreditCard, Landmark, Smartphone, CheckCircle, Loader2, 
+    User, Calendar, Lock 
+} from 'lucide-react';
 
-  // --- Handlers to control the internal flow ---
-  const handleProceedToCheckout = () => {
-    if (cart.length > 0) {
-      setCheckoutStep('payment');
+// --- API HELPER HOOK (can be in its own file) ---
+const useApi = (authToken) => {
+  const api = useMemo(() => {
+    const instance = axios.create({ baseURL: "http://localhost:8080" });
+    instance.interceptors.request.use(
+      (config) => {
+        if (authToken) config.headers["Authorization"] = `Bearer ${authToken}`;
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+    return instance;
+  }, [authToken]);
+  return api;
+};
+
+
+// --- MAIN CART COMPONENT (Self-Sufficient) ---
+export default function Cart({ onBrowse, onOrderSuccess }) {
+  const { authToken } = useAuth();
+  const api = useApi(authToken);
+
+  const [cart, setCart] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [checkoutStep, setCheckoutStep] = useState('cart');
+  const [mutatingItemId, setMutatingItemId] = useState(null);
+
+  useEffect(() => {
+    if (!authToken) {
+      setIsLoading(false);
+      setError("Please log in to view your cart.");
+      return;
+    }
+    
+    const fetchCart = async () => {
+      setIsLoading(true);
+      try {
+        const response = await api.get('/api/customer/cart');
+        setCart(response.data);
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to fetch cart.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCart();
+  }, [authToken, api]);
+
+  const handleAddToCart = async (menuItem) => {
+    setMutatingItemId(menuItem.id);
+    try {
+      const response = await api.post(`/api/customer/cart/items?menuItemId=${menuItem.id}&quantity=1`);
+      setCart(response.data);
+    } catch (err) {
+      alert(`Error: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setMutatingItemId(null);
     }
   };
 
-  const handleBackToCart = () => {
-    setCheckoutStep('cart');
-  };
-
-  const handlePaymentSubmit = () => {
-    // This function is called from the PaymentPage component below
-    // It tells the parent (CustomerDashboard) that the order was successful
-    onOrderSuccess(); 
-    // Then it moves to its own internal success step
-    setCheckoutStep('success');
+  const handleRemoveFromCart = async (cartItemId) => {
+    setMutatingItemId(cartItemId);
+    try {
+      const response = await api.delete(`/api/customer/cart/items/${cartItemId}`);
+      setCart(response.data);
+    } catch (err) {
+      alert(`Error: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setMutatingItemId(null);
+    }
   };
   
-  const totalPrice = cart.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2);
+  const handlePlaceOrder = async () => {
+    try {
+      const response = await api.post('/api/customer/orders');
+      if (onOrderSuccess) onOrderSuccess(response.data);
+      setCart(null);
+      setCheckoutStep('success');
+      return true;
+    } catch (err) {
+      alert(`Error placing order: ${err.response?.data?.message || err.message}`);
+      return false;
+    }
+  };
 
-  // --- Conditional Rendering Logic ---
-  // Renders the correct view based on the internal `checkoutStep` state
+  const handleProceedToCheckout = () => { if (cart?.items?.length > 0) setCheckoutStep('payment'); };
+  const handleBackToCart = () => setCheckoutStep('cart');
+  const totalPrice = useMemo(() => cart?.items?.reduce((total, item) => total + (item.menuItem.price * item.quantity), 0).toFixed(2) || '0.00', [cart]);
+
+  if (isLoading) return <div className="card flex justify-center p-12"><Loader2 className="animate-spin h-8 w-8 text-primary-500" /></div>;
+  if (error) return <div className="card text-center p-12 text-red-600">Error: {error}</div>;
+
   switch (checkoutStep) {
-    case 'payment':
-      return (
-        <PaymentPage 
-          totalPrice={totalPrice}
-          onBack={handleBackToCart}
-          onPaymentSuccess={handlePaymentSubmit} // Pass the handler down
-        />
-      );
-
-    case 'success':
-      // The success message now takes the user back to browsing
-      return (
-        <OrderSuccess onBrowse={onBrowse} />
-      );
-      
-    case 'cart':
+    case 'payment': return <PaymentPage totalPrice={totalPrice} onBack={handleBackToCart} onPaymentSuccess={handlePlaceOrder} />;
+    case 'success': return <OrderSuccess onBrowse={onBrowse} />;
     default:
-      // If the cart is empty, show a dedicated message
-      if (cart.length === 0) {
-        return <EmptyCart onBrowse={onBrowse} />;
-      }
-      // Otherwise, show the list of cart items
-      return (
-        <CartView
-          cart={cart}
-          onAddToCart={onAddToCart}
-          onRemoveFromCart={onRemoveFromCart}
-          onCheckout={handleProceedToCheckout} // Use the internal handler
-          totalPrice={totalPrice}
-        />
-      );
+      if (!cart || cart.items.length === 0) return <EmptyCart onBrowse={onBrowse} />;
+      return <CartView cartItems={cart.items} onAddToCart={handleAddToCart} onRemoveFromCart={handleRemoveFromCart} onCheckout={handleProceedToCheckout} totalPrice={totalPrice} mutatingItemId={mutatingItemId} />;
   }
 }
 
-// --- HELPER COMPONENT: Cart View (What the user sees first) ---
-function CartView({ cart, onAddToCart, onRemoveFromCart, onCheckout, totalPrice }) {
+// --- HELPER COMPONENT: Cart View ---
+function CartView({ cartItems, onAddToCart, onRemoveFromCart, onCheckout, totalPrice, mutatingItemId }) {
   return (
     <div className="card">
       <h2 className="text-xl sm:text-2xl font-bold mb-6">Shopping Cart</h2>
       <div className="space-y-4">
-        {cart.map((item) => (
-          <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-4 bg-gray-50 rounded-lg">
-            <img src={item.image || "/placeholder.svg"} alt={item.name} className="w-full sm:w-16 h-24 sm:h-16 object-cover rounded-lg" />
-            <div className="flex-1">
-              <h3 className="font-semibold">{item.name}</h3>
-            </div>
-            <div className="flex items-center justify-between w-full sm:w-auto">
-              <div className="flex items-center space-x-2">
-                <button onClick={() => onRemoveFromCart(item.id)} className="p-1 text-gray-600 hover:text-red-600"><Minus className="h-4 w-4" /></button>
-                <span className="font-semibold w-8 text-center">{item.quantity}</span>
-                <button onClick={() => onAddToCart(item)} className="p-1 text-gray-600 hover:text-primary-600"><Plus className="h-4 w-4" /></button>
+        {cartItems.map((cartItem) => {
+          const isMutating = mutatingItemId === cartItem.id || mutatingItemId === cartItem.menuItem.id;
+          return (
+            <div key={cartItem.id} className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 p-4 bg-gray-50 rounded-lg">
+              <img src={cartItem.menuItem.imageUrl || "/placeholder.svg"} alt={cartItem.menuItem.name} className="w-full sm:w-16 h-24 sm:h-16 object-cover rounded-lg" />
+              <div className="flex-1"><h3 className="font-semibold">{cartItem.menuItem.name}</h3></div>
+              <div className="flex items-center justify-between w-full sm:w-auto">
+                <div className="flex items-center space-x-2">
+                  <button onClick={() => onRemoveFromCart(cartItem.id)} disabled={isMutating} className="p-1 disabled:opacity-50"><Minus className="h-4 w-4" /></button>
+                  <span className="font-semibold w-8 text-center">{isMutating ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : cartItem.quantity}</span>
+                  <button onClick={() => onAddToCart(cartItem.menuItem)} disabled={isMutating} className="p-1 disabled:opacity-50"><Plus className="h-4 w-4" /></button>
+                </div>
+                <p className="font-bold text-right ml-4">₹{(cartItem.menuItem.price * cartItem.quantity).toFixed(2)}</p>
               </div>
-              <p className="font-bold text-right ml-4">₹{(item.price * item.quantity).toFixed(2)}</p>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="border-t pt-4 mt-6">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-xl font-bold">Total:</span>
-          <span className="text-xl font-bold">₹{totalPrice}</span>
-        </div>
-        <button onClick={onCheckout} className="w-full btn-primary py-3">
-          Proceed to Checkout
-        </button>
+        <div className="flex justify-between items-center mb-4"><span className="text-xl font-bold">Total:</span><span className="text-xl font-bold">₹{totalPrice}</span></div>
+        <button onClick={onCheckout} className="w-full btn-primary py-3">Proceed to Checkout</button>
       </div>
     </div>
   );
@@ -104,15 +147,22 @@ function CartView({ cart, onAddToCart, onRemoveFromCart, onCheckout, totalPrice 
 function PaymentPage({ totalPrice, onPaymentSuccess, onBack }) {
     const [selectedMethod, setSelectedMethod] = useState('card');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [paymentDetails, setPaymentDetails] = useState({
+        cardNumber: '', expiryDate: '', cvv: '', nameOnCard: '', upiId: '', bank: ''
+    });
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setPaymentDetails(prev => ({ ...prev, [name]: value }));
+    };
   
-    const handleFormSubmit = (e) => {
+    const handleFormSubmit = async (e) => {
       e.preventDefault();
       setIsProcessing(true);
-      // Simulate API call to payment gateway
-      setTimeout(() => {
-        setIsProcessing(false);
-        onPaymentSuccess(); // Signal success to the parent Cart component
-      }, 2000);
+      console.log("Simulating payment with details:", paymentDetails);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await onPaymentSuccess();
+      setIsProcessing(false);
     };
   
     return (
@@ -136,10 +186,19 @@ function PaymentPage({ totalPrice, onPaymentSuccess, onBack }) {
                     </div>
                 </div>
                 <form onSubmit={handleFormSubmit}>
-                    {selectedMethod === 'card' && <div className="space-y-4"><input className="input-field" placeholder="Card Number" required/><div className="flex gap-4"><input className="input-field" placeholder="MM / YY" required/><input className="input-field" placeholder="CVV" required/></div></div>}
-                    {selectedMethod === 'upi' && <input className="input-field" placeholder="yourname@bank" required />}
-                    {selectedMethod === 'netbanking' && <select className="input-field" required><option value="">Select Bank</option><option>State Bank of India</option><option>HDFC Bank</option></select>}
-                    <button type="submit" className="w-full btn-primary py-3 mt-8" disabled={isProcessing}>{isProcessing ? 'Processing...' : `Pay Securely`}</button>
+                    {selectedMethod === 'card' && (
+                        <div className="space-y-4">
+                            <div className="relative"><CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="cardNumber" value={paymentDetails.cardNumber} onChange={handleInputChange} className="input-field pl-10" placeholder="Card Number" required minLength="16" maxLength="16" /></div>
+                            <div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="nameOnCard" value={paymentDetails.nameOnCard} onChange={handleInputChange} className="input-field pl-10" placeholder="Name on Card" required /></div>
+                            <div className="flex gap-4">
+                                <div className="relative w-1/2"><Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="expiryDate" value={paymentDetails.expiryDate} onChange={handleInputChange} className="input-field pl-10" placeholder="MM / YY" required /></div>
+                                <div className="relative w-1/2"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="password" name="cvv" value={paymentDetails.cvv} onChange={handleInputChange} className="input-field pl-10" placeholder="CVV" required minLength="3" maxLength="3" /></div>
+                            </div>
+                        </div>
+                    )}
+                    {selectedMethod === 'upi' && <div className="relative"><Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="upiId" value={paymentDetails.upiId} onChange={handleInputChange} className="input-field pl-10" placeholder="yourname@bank" required /></div>}
+                    {selectedMethod === 'netbanking' && <div className="relative"><Landmark className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><select name="bank" value={paymentDetails.bank} onChange={handleInputChange} className="input-field pl-10" required><option value="">Select Bank</option><option>State Bank of India</option><option>HDFC Bank</option></select></div>}
+                    <button type="submit" className="w-full btn-primary py-3 mt-8" disabled={isProcessing}>{isProcessing ? 'Placing Order...' : `Pay Securely`}</button>
                 </form>
             </div>
         </div>
@@ -147,7 +206,6 @@ function PaymentPage({ totalPrice, onPaymentSuccess, onBack }) {
     );
 }
 
-// --- HELPER COMPONENT: Payment Option Button ---
 const PaymentOption = ({ icon, label, value, selectedMethod, setSelectedMethod }) => (
     <button onClick={() => setSelectedMethod(value)} className={`w-full flex items-center text-left p-4 border rounded-lg transition-colors ${selectedMethod === value ? 'bg-primary-50 border-primary-500 text-primary-600' : 'hover:bg-gray-50'}`}>
       <div className="mr-4">{icon}</div>
@@ -155,7 +213,6 @@ const PaymentOption = ({ icon, label, value, selectedMethod, setSelectedMethod }
     </button>
 );
 
-// --- HELPER COMPONENT: Order Success Message ---
 function OrderSuccess({ onBrowse }) {
     return (
       <div className="card text-center py-12">
@@ -167,7 +224,6 @@ function OrderSuccess({ onBrowse }) {
     );
 }
 
-// --- HELPER COMPONENT: Empty Cart Message ---
 function EmptyCart({ onBrowse }) {
     return (
       <div className="card">

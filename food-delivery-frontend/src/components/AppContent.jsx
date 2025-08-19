@@ -33,7 +33,7 @@ export default function AppContent() {
       return <CustomerDashboard />
     case "restaurant":
       return <RestaurantDashboard />
-    case "delivery":
+    case "deliveryman":
       return <DeliveryDashboard />
     case "admin":
       return <AdminDashboard />

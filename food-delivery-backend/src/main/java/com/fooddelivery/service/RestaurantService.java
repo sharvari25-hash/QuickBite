@@ -1,93 +1,88 @@
 package com.fooddelivery.service;
 
-import java.util.*;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-import com.fooddelivery.entity.RestaurantDetails;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fooddelivery.entity.Restaurant;
 import com.fooddelivery.entity.User;
 import com.fooddelivery.enums.RoleType;
-import com.fooddelivery.repository.RestaurantDetailsRepository;
+import com.fooddelivery.repository.RestaurantRepository;
 import com.fooddelivery.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.transaction.Transactional;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class RestaurantService {
 
-	@Autowired
-	private RestaurantDetailsRepository restaurantRepository;
-	
-	@Autowired
-	private PasswordEncoder passwordEncoder;
-	
-	@Autowired 
-	private UserRepository userRepository;
-	
-	// --- THIS IS THE NEW, CORRECTED REGISTRATION METHOD ---
-	@Transactional
-    public RestaurantDetails addRestaurant(Map<String, Object> payload) {
-        
-        // 1. Manually create the User object from the Map
-        User user = new User();
-        // We must cast the objects from the map to their correct type (String)
-        user.setName((String) payload.get("name"));
-        user.setEmail((String) payload.get("email"));
+    private final RestaurantRepository restaurantRepository;
+    private final UserRepository userRepository;
+    private final UserService userService;
+    private final ObjectMapper objectMapper;
 
-        user.setMobileNumber((String) payload.get("mobileNumber"));
-        
-        // 2. Hash the password from the Map. This is critical.
-        user.setPassword(passwordEncoder.encode((String) payload.get("password")));
-        
-        // 3. Set the user's role. This is also critical.
-        user.setRole(RoleType.RESTAURANT);
-
-        // 4. Manually create the RestaurantDetails object from the Map
-        RestaurantDetails restaurant = new RestaurantDetails();
-        restaurant.setBusinessName((String) payload.get("businessName"));
-        restaurant.setGstin((String) payload.get("gstin"));
-        restaurant.setFssaiNumber((String) payload.get("fssaiNumber"));
-        restaurant.setAddress((String) payload.get("address"));
-        restaurant.setCity((String) payload.get("city"));
-        restaurant.setState((String) payload.get("state"));
-        restaurant.setPostalCode((String) payload.get("postalCode"));
-        restaurant.setOpeningHours((String) payload.get("openingHours"));
-        restaurant.setClosingHours((String) payload.get("closingHours"));
-
-        // 5. Link the new User to the new Restaurant
-        restaurant.setUser(user);
-
-        // 6. Save both entities. With cascading, saving the restaurant will also save the user.
-        //    To be safe, you can save the user explicitly first.
-        userRepository.save(user);
+    public RestaurantService(RestaurantRepository restaurantRepository, UserRepository userRepository, UserService userService, ObjectMapper objectMapper) {
+        this.restaurantRepository = restaurantRepository;
+        this.userRepository = userRepository;
+        this.userService = userService;
+        this.objectMapper = objectMapper;
+    }
+    
+    
+    @Transactional
+    public Restaurant registerRestaurant(Map<String, Object> payload) {
+        User owner = objectMapper.convertValue(payload.get("owner"), User.class);
+        Restaurant restaurant = objectMapper.convertValue(payload.get("restaurant"), Restaurant.class);
+        owner.setRole(RoleType.RESTAURANT);
+        restaurant.setActive(false); 
+        User savedOwner = userService.createUser(owner);
+        restaurant.setOwner(savedOwner);
         return restaurantRepository.save(restaurant);
     }
 
-	public Optional<RestaurantDetails> getRestaurantById(Long id) {
-        return restaurantRepository.findById(id);
-    }
-	
-    public List<RestaurantDetails> getAllRestaurants() {
-        return (List<RestaurantDetails>) restaurantRepository.findAll();
-    }
-
-    
-    public RestaurantDetails updateRestaurant(Long id, RestaurantDetails updated) {
-        RestaurantDetails existing = restaurantRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        existing.setBusinessName(updated.getBusinessName());
-        existing.setOpeningHours(updated.getOpeningHours());
-        existing.setClosingHours(updated.getClosingHours());
-        // Update more fields as needed
-
-        return restaurantRepository.save(existing);
+    @Transactional
+    public Restaurant createRestaurant(Restaurant restaurant, Long ownerId) {
+        User owner = userRepository.findById(ownerId)
+                .orElseThrow(() -> new EntityNotFoundException("Owner (User) not found with id: " + ownerId));
+        restaurant.setOwner(owner);
+        return restaurantRepository.save(restaurant);
     }
 
-    
-    public void deleteRestaurant(Long id) {
-        restaurantRepository.deleteById(id);
+    @Transactional(readOnly = true)
+    public Restaurant getRestaurantById(Long id) {
+        return restaurantRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found with id: " + id));
     }
+
+    @Transactional(readOnly = true)
+    public List<Restaurant> getAllActiveRestaurants() {
+        return restaurantRepository.findActiveRestaurantsWithOwners();
+    }
+
+    @Transactional
+    public Restaurant updateRestaurantStatus(Long id, boolean isActive) {
+        Restaurant restaurant = getRestaurantById(id);
+        restaurant.setActive(isActive);
+        return restaurantRepository.save(restaurant);
+    }
+
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    // ★★★ THIS IS THE IMPLEMENTED METHOD FOR EDIT PROFILE ★★★
+    @Transactional
+	public Restaurant updateRestaurant(Long id, Restaurant updatedDetails) {
+		Restaurant existingRestaurant = restaurantRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Restaurant not found with id: " + id));
+
+        // Update only the fields that can be changed by the owner
+        existingRestaurant.setName(updatedDetails.getName());
+        existingRestaurant.setAddress(updatedDetails.getAddress());
+        existingRestaurant.setPhone(updatedDetails.getPhone());
+        existingRestaurant.setEmail(updatedDetails.getEmail());
+        existingRestaurant.setImageUrl(updatedDetails.getImageUrl());
+        existingRestaurant.setCategories(updatedDetails.getCategories());
+        // Note: We do not update the 'owner' or 'active' status here.
+
+		return restaurantRepository.save(existingRestaurant);
+	}
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 }

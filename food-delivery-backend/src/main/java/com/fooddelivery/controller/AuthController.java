@@ -1,134 +1,119 @@
 package com.fooddelivery.controller;
 
-
-import com.fooddelivery.entity.AddressDetails;
-import com.fooddelivery.entity.DeliveryDetails;
-import com.fooddelivery.entity.RestaurantDetails;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fooddelivery.entity.Address;
+import com.fooddelivery.entity.DeliveryPartnerProfile; // ★★★ ADD IMPORT ★★★
+import com.fooddelivery.entity.Restaurant;
 import com.fooddelivery.entity.User;
 import com.fooddelivery.enums.RoleType;
 import com.fooddelivery.security.JwtService;
-import com.fooddelivery.service.AddressDetailsService;
-import com.fooddelivery.service.DeliveryDetailsService;
+import com.fooddelivery.service.CustomerProfileService;
+import com.fooddelivery.service.DeliveryPartnerService; // ★★★ ADD IMPORT ★★★
 import com.fooddelivery.service.RestaurantService;
 import com.fooddelivery.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
-    
-    @Autowired
-    private RestaurantService restaurantService;
-    
-    @Autowired
-    private DeliveryDetailsService deliveryService;
-    
-    @Autowired
-    private AddressDetailsService addressService;
+    private final UserService userService;
+    private final CustomerProfileService customerProfileService;
+    private final RestaurantService restaurantService;
+    private final DeliveryPartnerService deliveryPartnerService; // ★★★ ADD DEPENDENCY ★★★
+    private final JwtService jwtService;
+    private final AuthenticationManager authManager;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private JwtService jwtService;
-
-    @Autowired
-    private AuthenticationManager authManager;
-
-    @PostMapping("/register/customer")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody User user) {
-    	user.setRole(RoleType.CUSTOMER);
-       User savedUser = userService.registerUser(user);
-        String jwtToken = jwtService.generateToken(savedUser.getEmail());
-        Map<String, Object> responseBody = new HashMap<>();
-        responseBody.put("token", jwtToken);
-        responseBody.put("user", savedUser);
-        return ResponseEntity.ok(responseBody);
+    // ★★★ UPDATE CONSTRUCTOR ★★★
+    public AuthController(UserService userService, CustomerProfileService customerProfileService, RestaurantService restaurantService, DeliveryPartnerService deliveryPartnerService, JwtService jwtService, AuthenticationManager authManager, ObjectMapper objectMapper) {
+        this.userService = userService;
+        this.customerProfileService = customerProfileService;
+        this.restaurantService = restaurantService;
+        this.deliveryPartnerService = deliveryPartnerService;
+        this.jwtService = jwtService;
+        this.authManager = authManager;
+        this.objectMapper = objectMapper;
     }
 
+    /**
+     * Public: A customer registers themselves.
+     */
+    @PostMapping("/register/customer")
+    public ResponseEntity<Map<String, Object>> registerCustomer(@RequestBody Map<String, Object> payload) {
+        User user = new User();
+        user.setName((String) payload.get("name"));
+        user.setEmail((String) payload.get("email"));
+        user.setPassword((String) payload.get("password"));
+        user.setPhone((String) payload.get("phone"));
+        user.setAvatarUrl((String) payload.get("avatarUrl"));
+        user.setRole(RoleType.CUSTOMER);
+
+        User savedUser = userService.createUser(user);
+
+        if (payload.containsKey("address")) {
+            Address address = objectMapper.convertValue(payload.get("address"), Address.class);
+            customerProfileService.createCustomerProfile(savedUser.getId(), address);
+        }
+
+        String jwtToken = jwtService.generateToken(savedUser.getEmail());
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", jwtToken);
+        response.put("user", savedUser); // NOTE: In prod, use a DTO to hide the password hash
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Public: A delivery partner registers with user and profile details.
+     */
+    @PostMapping("/register/delivery-partner")
+    public ResponseEntity<DeliveryPartnerProfile> registerDeliveryPartner(@RequestBody Map<String, Object> payload) {
+        // ★★★ THIS METHOD IS NOW CORRECT ★★★
+        // It delegates the entire nested payload to the dedicated service.
+        DeliveryPartnerProfile pendingProfile = deliveryPartnerService.registerDeliveryPartner(payload);
+        return new ResponseEntity<>(pendingProfile, HttpStatus.CREATED);
+    }
+
+    /**
+     * Public: A restaurant owner registers with owner and restaurant details.
+     */
+    @PostMapping("/register/restaurant")
+    public ResponseEntity<Restaurant> registerRestaurant(@RequestBody Map<String, Object> payload) {
+        Restaurant pendingRestaurant = restaurantService.registerRestaurant(payload);
+        return new ResponseEntity<>(pendingRestaurant, HttpStatus.CREATED);
+    }
+
+    /**
+     * Login for any user role.
+     */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User user, HttpServletResponse response) {
-        var authToken = new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword());
+    public ResponseEntity<?> login(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String password = payload.get("password");
+
+        Authentication authToken = new UsernamePasswordAuthenticationToken(email, password);
         authManager.authenticate(authToken);
 
-        String jwtToken = jwtService.generateToken(user.getEmail());
-
-        // You can also fetch user details if needed
-        User dbUser = userService.findByEmail(user.getEmail());
+        String jwtToken = jwtService.generateToken(email);
+        User dbUser = userService.getUserByEmail(email);
 
         Map<String, Object> responseBody = new HashMap<>();
         responseBody.put("token", jwtToken);
-        responseBody.put("role", dbUser.getRoleType()); // If you want to send role
+        responseBody.put("role", dbUser.getRole());
         responseBody.put("email", dbUser.getEmail());
         responseBody.put("name", dbUser.getName());
 
         return ResponseEntity.ok(responseBody);
-    }
-    
-    @PostMapping("/admin/users/create")
-    public ResponseEntity<?> createAdminUser(@RequestBody Map<String, String> payload) {
-        
-        try {
-            // 1. Manually create the User object
-            User newUser = new User();
-
-            // 2. Safely get the values from the payload Map
-            String name = payload.get("name");
-            String email = payload.get("email");
-            String password = payload.get("password");
-            String roleType = payload.get("roleType"); // This will be "ADMIN"
-
-            // 3. Check for missing data
-            if (name == null || email == null || password == null || roleType == null) {
-                // Return a clear JSON error message
-                return ResponseEntity.badRequest().body(Map.of("message", "Error: Missing required fields (name, email, password, roleType)."));
-            }
-
-            // 4. Set the fields on the new User object
-            newUser.setName(name);
-            newUser.setEmail(email);
-            newUser.setPassword(password); // Pass raw password to the service for encoding
-            
-            // This line is now safe because roleType is a guaranteed String from the Map
-            newUser.setRole(RoleType.valueOf(roleType.toUpperCase()));
-
-            // 5. Call your service to handle encoding and saving
-            User savedUser = userService.registerUser(newUser);
-
-            // 6. Return the created user as JSON, which the frontend expects
-            return ResponseEntity.ok(savedUser);
-
-        } catch (Exception e) {
-            // Catch any other unexpected errors (like a bad roleType string)
-            // and return a proper JSON error response.
-            return ResponseEntity.status(500).body(Map.of("message", "Error creating user: " + e.getMessage()));
-        }
-    }
-    
-    @PostMapping("/register/restaurant")
-    public RestaurantDetails addRestaurant(@RequestBody Map<String, Object> payload) {
-        return restaurantService.addRestaurant(payload);
-    }
-
-    
-    @PostMapping("/register/delivery")
-    public DeliveryDetails addDeliveryPerson(@RequestBody Map<String, Object> payload) {
-		return deliveryService.addDeliveryPerson(payload);	
-    }
-    
-    @PostMapping("register/address")
-    public AddressDetails addAddress(@RequestBody Map<String, Object> payload) {
-		return addressService.addAddress(payload);
-    	
     }
 }

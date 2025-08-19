@@ -6,7 +6,7 @@ public enum RoleType {
 	CUSTOMER,
     RESTAURANT,
     ADMIN,
-    DELIVERY;
+    DELIVERYMAN;
  
     @JsonCreator
     public static RoleType fromString(String value) {

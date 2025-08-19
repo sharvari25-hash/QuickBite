@@ -1,79 +1,80 @@
 package com.fooddelivery.service;
 
-import java.util.*;
+import com.fooddelivery.entity.User;
+import com.fooddelivery.enums.RoleType;
+import com.fooddelivery.repository.UserRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import com.fooddelivery.entity.User;
-import com.fooddelivery.repository.*;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class UserService implements UserDetailsService{
+public class UserService implements UserDetailsService {
 
-    @Autowired
-    private UserRepository userRepository;
-    
-    private ApplicationContext applicationContext;
-    
-    public UserService(UserRepository userRepository, ApplicationContext applicationContext) {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository userRepository, @Lazy PasswordEncoder passwordEncoder) { // ★★★ STEP 2: ADD @Lazy HERE ★★★
         this.userRepository = userRepository;
-        this.applicationContext = applicationContext;
+        this.passwordEncoder = passwordEncoder;
     }
-    
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        return new org.springframework.security.core.userdetails.User(
-            user.getEmail(),
-            user.getPassword(),
-            Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
-        );
-    }
-    public User findByEmail(String email) {
+    /**
+     * This is the method Spring Security uses to authenticate a user.
+     * It loads the user from the database by their "username", which in our case is the email.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        // ★★★ THIS IS THE FIX ★★★
+        // We find the user by their email. If not found, we throw the required exception.
+        // Because your 'User' entity implements 'UserDetails', we can return it directly.
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
 
-    public User registerUser(User user) {
-    	PasswordEncoder encoder = applicationContext.getBean(PasswordEncoder.class);
-        user.setPassword(encoder.encode(user.getPassword()));
+    /**
+     * Creates a new user, ensuring the password is securely encoded.
+     */
+    @Transactional
+    public User createUser(User user) {
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new IllegalStateException("Email address already in use.");
+        }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
-
-    public Optional<User> getUserById(Long id) {
-        return userRepository.findById(id);
+    
+    @Transactional
+    public User registerDeliveryPartner(User user) {
+        user.setRole(RoleType.DELIVERYMAN);
+        // CRITICAL: Set the user to an inactive state for admin approval.
+        // The 'available' field is perfect for this.
+        user.setAvailable(false); 
+        return createUser(user); // Re-uses the main createUser method for password encoding
     }
 
-    public List<User> getAllUsers() {
-        return (List<User>) userRepository.findAll();
+    /**
+     * A helper method to get a user by their ID.
+     */
+    @Transactional(readOnly = true)
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + id));
     }
 
-    public User updateUser(Long id, User updatedUser) {
-        User existing = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        existing.setName(updatedUser.getName());
-        existing.setEmail(updatedUser.getEmail());
-
-        existing.setMobileNumber(updatedUser.getMobileNumber());
-
-        existing.setPhone(updatedUser.getPhone());
-        existing.setRole(updatedUser.getRole());
-        // Update other fields as needed
-
-        return userRepository.save(existing);
+    /**
+     * A helper method to get a user by their email.
+     */
+    @Transactional(readOnly = true)
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
-
-    public void deleteUser(Long id) {
-        userRepository.deleteById(id);
-    }
-
+    
+    
 }
