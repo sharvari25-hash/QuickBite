@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+<<<<<<< HEAD
 // --- API HELPER HOOK using Axios ---
 const useApi = (authToken) => {
   const api = useMemo(() => {
@@ -41,6 +42,232 @@ const useApi = (authToken) => {
   }, [authToken]);
   return api;
 };
+=======
+// Mock data with unique IDs
+const mockRestaurants = [
+  {
+    id: 1,
+    name: "Spicy Biryani House",
+    image: "https://source.unsplash.com/featured/?restaurant,biryani",
+    rating: 4.5,
+    deliveryTime: 30,
+    category: "Biryani, Mughlai",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 2,
+    name: "South Delight",
+    image: "https://source.unsplash.com/featured/?restaurant,dosa",
+    rating: 4.2,
+    deliveryTime: 25,
+    category: "South Indian",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 3,
+    name: "Punjabi Zaika",
+    image: "https://source.unsplash.com/featured/?restaurant,punjabi",
+    rating: 4.6,
+    deliveryTime: 35,
+    category: "North Indian",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 4,
+    name: "Tandoori Flames",
+    image: "https://source.unsplash.com/featured/?restaurant,tandoori",
+    rating: 4.3,
+    deliveryTime: 28,
+    category: "Grill, Tandoori",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 5,
+    name: "The Veggie Hub",
+    image: "https://source.unsplash.com/featured/?restaurant,vegetarian",
+    rating: 4.1,
+    deliveryTime: 22,
+    category: "Vegetarian",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 6,
+    name: "Downtown Pizzeria",
+    image: "https://source.unsplash.com/featured/?restaurant,pizza",
+    rating: 4.8,
+    deliveryTime: 28,
+    category: "Italian, Pizza",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 7,
+    name: "Noodle Kingdom",
+    image: "https://source.unsplash.com/featured/?restaurant,noodles",
+    rating: 4.3,
+    deliveryTime: 25,
+    category: "Chinese, Asian",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 8,
+    name: "The Kebab Stop",
+    image: "https://source.unsplash.com/featured/?restaurant,kebab",
+    rating: 4.7,
+    deliveryTime: 35,
+    category: "Middle Eastern, Grill",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 9,
+    name: "Sizzler's Paradise",
+    image: "https://source.unsplash.com/featured/?restaurant,sizzler",
+    rating: 4.5,
+    deliveryTime: 40,
+    category: "Continental, Steakhouse",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+  {
+    id: 10,
+    name: "Sweet Escapes",
+    image: "https://source.unsplash.com/featured/?restaurant,dessert",
+    rating: 4.9,
+    deliveryTime: 20,
+    category: "Desserts, Bakery",
+    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
+    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
+  },
+];
+const topRestaurants = [
+  {
+    id: 1,
+    name: "Spicy Biryani House",
+    image: "/placeholder.svg?height=200&width=300",
+    rating: 4.5,
+    deliveryTime: 30,
+    category: "Biryani, Mughlai",
+    deliveryFee: "Free",
+    promoted: true,
+    discount: "50% OFF",
+  },
+  {
+    id: 2,
+    name: "South Delight",
+    image: "/placeholder.svg?height=200&width=300",
+    rating: 4.2,
+    deliveryTime: 25,
+    category: "South Indian",
+    deliveryFee: "₹20",
+    promoted: true,
+    discount: "40% OFF",
+  },
+  {
+    id: 3,
+    name: "Punjabi Zaika",
+    image: "/placeholder.svg?height=200&width=300",
+    rating: 4.6,
+    deliveryTime: 35,
+    category: "North Indian",
+    deliveryFee: "Free",
+    promoted: true,
+    discount: "30% OFF",
+  },
+  {
+    id: 4,
+    name: "Pizza Corner",
+    image: "/placeholder.svg?height=200&width=300",
+    rating: 4.3,
+    deliveryTime: 28,
+    category: "Italian, Pizza",
+    deliveryFee: "₹15",
+    promoted: true,
+    discount: "Buy 1 Get 1",
+  },
+  {
+    id: 5,
+    name: "Burger Junction",
+    image: "/placeholder.svg?height=200&width=300",
+    rating: 4.1,
+    deliveryTime: 22,
+    category: "Fast Food, Burgers",
+    deliveryFee: "Free",
+    promoted: true,
+    discount: "25% OFF",
+  },
+];
+
+// FIX: Ensure unique IDs for mock data to avoid "Encountered two children with the same key" warnings.
+const mockMenuItems = [
+  {
+    id: 1,
+    name: "Chicken Biryani",
+    image: "https://source.unsplash.com/featured/?biryani",
+    price: 199,
+  },
+  {
+    id: 2,
+    name: "Paneer Butter Masala",
+    image: "https://source.unsplash.com/featured/?paneer",
+    price: 179,
+  },
+  {
+    id: 3,
+    name: "Masala Dosa",
+    image: "https://source.unsplash.com/featured/?dosa",
+    price: 99,
+  },
+  {
+    id: 4,
+    name: "Chicken Tikka",
+    image: "https://source.unsplash.com/featured/?chicken",
+    price: 249,
+  },
+  {
+    id: 5,
+    name: "Veg Thali",
+    image: "https://source.unsplash.com/featured/?thali",
+    price: 149,
+  },
+  {
+    id: 6, // FIX: Changed ID from 1 to 6
+    name: "Chicken Biryani",
+    image: "https://source.unsplash.com/featured/?biryani",
+    price: 199,
+  },
+  {
+    id: 7, // FIX: Changed ID from 2 to 7
+    name: "Paneer Butter Masala",
+    image: "https://source.unsplash.com/featured/?paneer",
+    price: 179,
+  },
+  {
+    id: 8, // FIX: Changed ID from 3 to 8
+    name: "Masala Dosa",
+    image: "https://source.unsplash.com/featured/?dosa",
+    price: 99,
+  },
+  {
+    id: 9, // FIX: Changed ID from 4 to 9
+    name: "Chicken Tikka",
+    image: "https://source.unsplash.com/featured/?chicken",
+    price: 249,
+  },
+  {
+    id: 10, // FIX: Changed ID from 5 to 10
+    name: "Veg Thali",
+    image: "https://source.unsplash.com/featured/?thali",
+    price: 149,
+  },
+];
+>>>>>>> 0acb141ef9aed6248ab6c16ca6b0a0cb1c7b755b
 
 // --- STATIC DATA ---
 const categories = [
