@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-<<<<<<< HEAD
+
 // --- API HELPER HOOK using Axios ---
 const useApi = (authToken) => {
   const api = useMemo(() => {
@@ -42,7 +42,7 @@ const useApi = (authToken) => {
   }, [authToken]);
   return api;
 };
-=======
+
 // Mock data with unique IDs
 const mockRestaurants = [
   {
@@ -267,7 +267,7 @@ const mockMenuItems = [
     price: 149,
   },
 ];
->>>>>>> 0acb141ef9aed6248ab6c16ca6b0a0cb1c7b755b
+
 
 // --- STATIC DATA ---
 const categories = [

@@ -1,17 +1,18 @@
-<<<<<<< HEAD
 "use client";
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { X, Mail, Lock, User, Eye, EyeOff, Phone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
   const { login } = useAuth();
+  const navigate = useNavigate();
 
-  // State now perfectly matches all relevant backend entity fields
+  // Unified state to handle all form fields for different roles
   const [formData, setFormData] = useState({
-    // User fields
-   name: "",
+    // Common user fields
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -19,24 +20,26 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
     avatarUrl: "",
     role: "customer",
 
-    // Restaurant fields
+    // Restaurant specific fields
     businessName: "",
     businessEmail: "",
     businessPhone: "",
     categories: "",
     imageUrl: "",
+    
+    // Common address fields
     addressLine1: "",
     city: "",
     state: "",
     postalCode: "",
     country: "",
     
-    // Delivery Partner Profile fields
+    // Delivery Partner specific fields
     licenseNumber: "",
     vehicleType: "MOTORCYCLE",
     vehicleModel: "",
     vehicleRegistrationNumber: "",
-    idProofUrl: "", // ★★★ FIELD IS NOW CORRECTLY INCLUDED ★★★
+    idProofUrl: "",
     zone: ""
   });
 
@@ -44,6 +47,7 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Helper function for making API POST requests
   const apiPost = async (url, body) => {
     const response = await fetch(url, {
       method: "POST",
@@ -63,19 +67,44 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
     return null;
   };
 
+  // Redirect user to the appropriate dashboard based on their role
+  const redirectToDashboard = (userRole) => {
+    const role = userRole.toUpperCase();
+    console.log("Redirecting to dashboard for role:", role);
+    switch (role) {
+      case "CUSTOMER":
+        navigate("/customer-dashboard");
+        break;
+      case "RESTAURANT":
+        navigate("/restaurant-management");
+        break;
+      case "DELIVERY_PARTNER":
+      case "DELIVERY":
+        navigate("/delivery-partner-dashboard");
+        break;
+      case "ADMIN":
+        navigate("/admin-dashboard");
+        break;
+      default:
+        navigate("/"); // Fallback to home page
+    }
+  };
+
+  // Handle form submission for both sign-in and sign-up
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({});
-    const API_BASE_URL =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
     try {
       if (mode === "signin") {
-        await login(formData.email, formData.password);
+        const userData = await login(formData.email, formData.password);
         onClose();
+        redirectToDashboard(userData.role); // Redirect after login
       } else {
         if (formData.password !== formData.confirmPassword) {
+          setErrors({ confirmPassword: "Passwords do not match." });
           throw new Error("Passwords do not match.");
         }
 
@@ -83,6 +112,7 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
         let endpoint = "";
         let payload = {};
 
+        // Construct payload based on the selected role
         switch (role) {
           case "customer":
             endpoint = `${API_BASE_URL}/api/auth/register/customer`;
@@ -125,8 +155,6 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
                   postalCode: formData.postalCode,
                   country: formData.country,
                 },
-                latitude: formData.latitude,
-                longitude: formData.longitude,
               },
             };
             break;
@@ -146,6 +174,7 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
                 vehicleType: formData.vehicleType.toUpperCase(),
                 vehicleModel: formData.vehicleModel,
                 vehicleRegistrationNumber: formData.vehicleRegistrationNumber,
+                idProofUrl: formData.idProofUrl,
                 zone: formData.zone,
               },
             };
@@ -156,256 +185,95 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
         }
 
         await apiPost(endpoint, payload);
-        alert(
-          "Registration successful! Please sign in to continue, or await admin approval."
-        );
-        onSwitchMode();
-=======
-// src/components/AuthModal.jsx
-"use client"
-
-import { useState } from "react"
-import { useNavigate } from "react-router-dom" // Use useNavigate from react-router-dom
-import { X, Mail, Lock, User, Eye, EyeOff, Phone, Store, Truck, Shield, Users } from "lucide-react"
-import { useAuth } from "../contexts/AuthContext" // Import useAuth
-
-export default function AuthModal({ isOpen, onClose, initialMode = "login" }) {
-  const { login, signup } = useAuth() // Get login and signup from AuthContext
-  const navigate = useNavigate() // Use useNavigate for programmatic navigation
-
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [phone, setPhone] = useState("")
-  const [name, setName] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState("")
-  const [selectedRole, setSelectedRole] = useState("customer")
-  const [mode, setMode] = useState(initialMode)
-
-  const roles = [
-    { value: "customer", label: "Customer", icon: Users },
-    { value: "restaurant", label: "Restaurant", icon: Store },
-    { value: "delivery", label: "Delivery Partner", icon: Truck },
-    { value: "admin", label: "Admin", icon: Shield },
-  ]
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError("")
-
-    try {
-      if (mode === "login") {
-        const userData = await login(email, password)
-        console.log("Login successful:", userData)
-        redirectToDashboard(userData.role.toUpperCase()) // Use role from API response
-      } else {
-        let payload = { name, email, password, phone } // Collect all common fields
-        
-        // Call signup from AuthContext with the payload and role type
-        await signup(payload, selectedRole)
-        console.log("Signup successful for:", selectedRole)
-        redirectToDashboard(selectedRole.toUpperCase()) // Use selected role for signup redirect
->>>>>>> 0acb141ef9aed6248ab6c16ca6b0a0cb1c7b755b
+        alert("Registration successful! Please sign in to continue.");
+        onSwitchMode(); // Switch to sign-in mode after successful registration
       }
-      onClose()
     } catch (err) {
-      setError(err.message || "An error occurred. Please try again.")
-      console.error("Authentication process error:", err)
+      setErrors({ general: err.message || "An error occurred. Please try again." });
+      console.error("Authentication process error:", err);
+    } finally {
+      setIsLoading(false);
     }
-<<<<<<< HEAD
   };
 
+  // Handle changes in form inputs
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
+    // Clear specific field error on change
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
-=======
-  }
-
-  const redirectToDashboard = (role) => {
-    console.log("Redirecting to dashboard for role:", role)
-    // Adjust paths to match your react-router-dom routes
-    switch (role) {
-      case "CUSTOMER":
-        navigate("/customer-dashboard")
-        break
-      case "RESTAURANT":
-        navigate("/restaurant-management")
-        break
-      case "DELIVERY": // Assuming your backend RoleType is 'DELIVERY'
-      case "DELIVERY_PARTNER": // If your backend RoleType is 'DELIVERY_PARTNER'
-        navigate("/delivery-partner-dashboard")
-        break
-      case "ADMIN":
-        navigate("/admin-dashboard")
-        break
-      default:
-        navigate("/") // Fallback to home page
->>>>>>> 0acb141ef9aed6248ab6c16ca6b0a0cb1c7b755b
     }
   };
 
-<<<<<<< HEAD
   if (!isOpen) return null;
 
+  // JSX for Restaurant specific fields
   const renderRestaurantFields = () => (
     <>
       <hr className="my-4" />
       <h3 className="text-lg font-semibold mb-2">Restaurant Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Business Name
-          </label>
-          <input
-            type="text"
-            name="businessName"
-            value={formData.businessName}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+          <input type="text" name="businessName" value={formData.businessName} onChange={handleChange} className="input-field" required />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Business Email
-          </label>
-          <input
-            type="email"
-            name="businessEmail"
-            value={formData.businessEmail}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Business Email</label>
+          <input type="email" name="businessEmail" value={formData.businessEmail} onChange={handleChange} className="input-field" required />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Business Phone
-          </label>
-          <input
-            type="tel"
-            name="businessPhone"
-            value={formData.businessPhone}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Business Phone</label>
+          <input type="tel" name="businessPhone" value={formData.businessPhone} onChange={handleChange} className="input-field" required />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Categories (e.g., Pizza, Indian)
-          </label>
-          <input
-            type="text"
-            name="categories"
-            value={formData.categories}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Categories</label>
+          <input type="text" name="categories" value={formData.categories} onChange={handleChange} className="input-field" placeholder="e.g., Pizza, Indian" required />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Image URL
-          </label>
-          <input
-            type="url"
-            name="imageUrl"
-            value={formData.imageUrl}
-            onChange={handleChange}
-            className="input-field"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+          <input type="url" name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="input-field" />
         </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address Line 1
-          </label>
-          <input
-            type="text"
-            name="addressLine1"
-            value={formData.addressLine1}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            City
-          </label>
-          <input
-            type="text"
-            name="city"
-            value={formData.city}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            State
-          </label>
-          <input
-            type="text"
-            name="state"
-            value={formData.state}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Postal Code
-          </label>
-          <input
-            type="text"
-            name="postalCode"
-            value={formData.postalCode}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Country
-          </label>
-          <input
-            type="text"
-            name="country"
-            value={formData.country}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
+        {/* Common Address Fields */}
+        {renderAddressFields()}
       </div>
     </>
   );
 
-   const renderDeliveryFields = () => (
+  // JSX for Delivery Partner specific fields
+  const renderDeliveryFields = () => (
     <>
       <hr className="my-4" />
       <h3 className="text-lg font-semibold mb-2">Delivery Partner Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label><select name="vehicleType" value={formData.vehicleType} onChange={handleChange} className="input-field" required><option>MOTORCYCLE</option><option>SCOOTER</option><option>CAR</option><option>BICYCLE</option></select></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model</label><input type="text" name="vehicleModel" value={formData.vehicleModel} onChange={handleChange} className="input-field" required /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">License Number</label><input type="text" name="licenseNumber" value={formData.licenseNumber} onChange={handleChange} className="input-field" required /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Registration No.</label><input type="text" name="vehicleRegistrationNumber" value={formData.vehicleRegistrationNumber} onChange={handleChange} className="input-field" required /></div>
-        
-        {/* ★★★ THIS IS THE CORRECTED PART ★★★ */}
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+            <select name="vehicleType" value={formData.vehicleType} onChange={handleChange} className="input-field" required>
+                <option>MOTORCYCLE</option>
+                <option>SCOOTER</option>
+                <option>CAR</option>
+                <option>BICYCLE</option>
+            </select>
+        </div>
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model</label>
+            <input type="text" name="vehicleModel" value={formData.vehicleModel} onChange={handleChange} className="input-field" required />
+        </div>
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
+            <input type="text" name="licenseNumber" value={formData.licenseNumber} onChange={handleChange} className="input-field" required />
+        </div>
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Registration No.</label>
+            <input type="text" name="vehicleRegistrationNumber" value={formData.vehicleRegistrationNumber} onChange={handleChange} className="input-field" required />
+        </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">ID Proof URL</label>
           <input type="url" name="idProofUrl" value={formData.idProofUrl} onChange={handleChange} className="input-field" placeholder="Link to your ID proof" required />
         </div>
-        
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Zone</label>
           <input type="text" name="zone" value={formData.zone} onChange={handleChange} className="input-field" required />
@@ -413,77 +281,40 @@ export default function AuthModal({ isOpen, onClose, initialMode = "login" }) {
       </div>
     </>
   );
+  
+  // Reusable JSX for address fields
+  const renderAddressFields = () => (
+    <>
+      <div className="md:col-span-2">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 1</label>
+        <input type="text" name="addressLine1" value={formData.addressLine1} onChange={handleChange} className="input-field" required />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+        <input type="text" name="city" value={formData.city} onChange={handleChange} className="input-field" required />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+        <input type="text" name="state" value={formData.state} onChange={handleChange} className="input-field" required />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+        <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} className="input-field" required />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+        <input type="text" name="country" value={formData.country} onChange={handleChange} className="input-field" required />
+      </div>
+    </>
+  );
 
+  // JSX for Customer specific fields (just the address)
   const renderCustomerAddressFields = () => (
     <>
       <hr className="my-4" />
       <h3 className="text-lg font-semibold mb-2">Address Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address Line 1
-          </label>
-          <input
-            type="text"
-            name="addressLine1"
-            value={formData.addressLine1}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            City
-          </label>
-          <input
-            type="text"
-            name="city"
-            value={formData.city}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            State
-          </label>
-          <input
-            type="text"
-            name="state"
-            value={formData.state}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Postal Code
-          </label>
-          <input
-            type="text"
-            name="postalCode"
-            value={formData.postalCode}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Country
-          </label>
-          <input
-            type="text"
-            name="country"
-            value={formData.country}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
+        {renderAddressFields()}
       </div>
     </>
   );
@@ -496,25 +327,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = "login" }) {
             <h2 className="text-2xl font-bold text-black">
               {mode === "signin" ? "Sign In" : "Create Account"}
             </h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
-            >
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200">
               <X className="h-5 w-5 text-gray-500" />
             </button>
           </div>
 
           {mode === "signup" && (
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                I am a
-              </label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="input-field"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">I am signing up as a</label>
+              <select name="role" value={formData.role} onChange={handleChange} className="input-field">
                 <option value="customer">Customer</option>
                 <option value="restaurant">Restaurant Owner</option>
                 <option value="delivery">Delivery Partner</option>
@@ -532,75 +353,36 @@ export default function AuthModal({ isOpen, onClose, initialMode = "login" }) {
             {mode === "signup" && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="input-field pl-10"
-                      required
-                    />
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="input-field pl-10" required />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mobile Number
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="input-field pl-10"
-                      required
-                    />
+                    <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="input-field pl-10" required />
                   </div>
                 </div>
               </>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="input-field pl-10"
-                  required
-                />
+                <input type="email" name="email" value={formData.email} onChange={handleChange} className="input-field pl-10" required />
               </div>
             </div>
+            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="input-field pl-10 pr-12"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
+                <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className="input-field pl-10 pr-12" required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
                   {showPassword ? <EyeOff /> : <Eye />}
                 </button>
               </div>
@@ -608,193 +390,36 @@ export default function AuthModal({ isOpen, onClose, initialMode = "login" }) {
 
             {mode === "signup" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    required
-                  />
+                  <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className="input-field pl-10" required />
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.confirmPassword}
-                  </p>
+                  <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
                 )}
               </div>
             )}
 
-            {mode === "signup" &&
-              formData.role === "restaurant" &&
-              renderRestaurantFields()}
-            {mode === "signup" &&
-              formData.role === "delivery" &&
-              renderDeliveryFields()}
-            {mode === "signup" &&
-              formData.role === "customer" &&
-              renderCustomerAddressFields()}
+            {/* Conditionally render role-specific fields */}
+            {mode === "signup" && formData.role === "restaurant" && renderRestaurantFields()}
+            {mode === "signup" && formData.role === "delivery" && renderDeliveryFields()}
+            {mode === "signup" && formData.role === "customer" && renderCustomerAddressFields()}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full btn-primary py-3 disabled:opacity-50"
-            >
-              {isLoading
-                ? "Processing..."
-                : mode === "signin"
-                ? "Sign In"
-                : "Create Account"}
+            <button type="submit" disabled={isLoading} className="w-full btn-primary py-3 disabled:opacity-50">
+              {isLoading ? "Processing..." : (mode === "signin" ? "Sign In" : "Create Account")}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600">
-              {mode === "signin"
-                ? "Don't have an account? "
-                : "Already have an account? "}
-              <button
-                onClick={onSwitchMode}
-                className="font-semibold text-primary-600 hover:underline"
-              >
+              {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
+              <button onClick={onSwitchMode} className="font-semibold text-primary-600 hover:underline">
                 {mode === "signin" ? "Sign up" : "Sign in"}
               </button>
             </p>
-=======
-  const toggleMode = () => {
-    setMode(mode === "login" ? "signup" : "login")
-    setEmail("")
-    setPassword("")
-    setPhone("")
-    setName("")
-    setError("")
-  }
-
-  if (!isOpen) return null
-
-  const SelectedIcon = roles.find((r) => r.value === selectedRole)?.icon || Users // Fallback icon
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">{mode === "login" ? "Login" : "Sign Up"}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="h-6 w-6" />
-          </button>
+          </div>
         </div>
-
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-
-        <form onSubmit={handleSubmit}>
-          {/* Role Selection Dropdown */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Role</label>
-            <div className="relative">
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                required
-              >
-                {roles.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
-              </select>
-              <SelectedIcon
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
-              />
-            </div>
-          </div>
-
-          {mode === "signup" && (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required={selectedRole === "delivery" || selectedRole === "restaurant"} // Conditionally required
-                  />
-                </div>
-              </div>
-            </>
-          )}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
->>>>>>> 0acb141ef9aed6248ab6c16ca6b0a0cb1c7b755b
-          </div>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            {mode === "login" ? "Login" : "Sign Up"}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-gray-600">
-          {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button
-            onClick={toggleMode}
-            className="text-blue-500 hover:underline"
-          >
-            {mode === "login" ? "Sign Up" : "Login"}
-          </button>
-        </p>
       </div>
     </div>
   );
