@@ -57,9 +57,7 @@ public class CustomerController {
         return ResponseEntity.ok(cart);
     }
 
-    /**
-     * Adds an item to the current user's cart.
-     */
+   
     @PostMapping("/cart/items")
     public ResponseEntity<Cart> addItemToCart(@RequestParam Long menuItemId,
                                               @RequestParam(defaultValue = "1") int quantity,
@@ -69,9 +67,7 @@ public class CustomerController {
         return ResponseEntity.ok(updatedCart);
     }
 
-    /**
-     * Removes/decrements an item from the current user's cart.
-     */
+    
     @DeleteMapping("/cart/items/{cartItemId}")
     public ResponseEntity<Cart> removeItemFromCart(@PathVariable Long cartItemId, Authentication authentication) {
         User user = getCurrentUser(authentication);
@@ -81,9 +77,7 @@ public class CustomerController {
 
     // --- Order Endpoints ---
 
-    /**
-     * Creates a new order from the items currently in the user's cart.
-     */
+    
     @PostMapping("/orders")
     public ResponseEntity<Order> placeOrder(Authentication authentication) {
         User user = getCurrentUser(authentication);
@@ -91,9 +85,7 @@ public class CustomerController {
         return ResponseEntity.ok(newOrder);
     }
 
-    /**
-     * Fetches the order history for the current user.
-     */
+   
     @GetMapping("/orders")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<List<Order>> getMyOrders(Authentication authentication) {

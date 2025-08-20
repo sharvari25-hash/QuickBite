@@ -3,13 +3,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
-// ★★★ THIS IS THE CORRECTED IMPORT LINE ★★★
+
+// Stripe Imports
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Icon Imports
 import { 
-    ShoppingCart, Plus, Minus, CreditCard, Landmark, Smartphone, CheckCircle, Loader2, 
-    User, Calendar, Lock 
+    ShoppingCart, Plus, Minus, CheckCircle, Loader2
 } from 'lucide-react';
 
-// --- API HELPER HOOK (can be in its own file) ---
+// --- API HELPER HOOK ---
 const useApi = (authToken) => {
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: "http://localhost:8080" });
@@ -26,7 +29,7 @@ const useApi = (authToken) => {
 };
 
 
-// --- MAIN CART COMPONENT (Self-Sufficient) ---
+// --- MAIN CART COMPONENT ---
 export default function Cart({ onBrowse, onOrderSuccess }) {
   const { authToken } = useAuth();
   const api = useApi(authToken);
@@ -81,19 +84,6 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
       setMutatingItemId(null);
     }
   };
-  
-  const handlePlaceOrder = async () => {
-    try {
-      const response = await api.post('/api/customer/orders');
-      if (onOrderSuccess) onOrderSuccess(response.data);
-      setCart(null);
-      setCheckoutStep('success');
-      return true;
-    } catch (err) {
-      alert(`Error placing order: ${err.response?.data?.message || err.message}`);
-      return false;
-    }
-  };
 
   const handleProceedToCheckout = () => { if (cart?.items?.length > 0) setCheckoutStep('payment'); };
   const handleBackToCart = () => setCheckoutStep('cart');
@@ -103,15 +93,15 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
   if (error) return <div className="card text-center p-12 text-red-600">Error: {error}</div>;
 
   switch (checkoutStep) {
-    case 'payment': return <PaymentPage totalPrice={totalPrice} onBack={handleBackToCart} onPaymentSuccess={handlePlaceOrder} />;
-    case 'success': return <OrderSuccess onBrowse={onBrowse} />;
+    case 'payment': return <PaymentPage totalPrice={totalPrice} onBack={handleBackToCart} />;
+    case 'success': return <OrderSuccess onBrowse={onBrowse} />; // This case is now mainly for non-redirect flows
     default:
       if (!cart || cart.items.length === 0) return <EmptyCart onBrowse={onBrowse} />;
       return <CartView cartItems={cart.items} onAddToCart={handleAddToCart} onRemoveFromCart={handleRemoveFromCart} onCheckout={handleProceedToCheckout} totalPrice={totalPrice} mutatingItemId={mutatingItemId} />;
   }
 }
 
-// --- HELPER COMPONENT: Cart View ---
+// --- CART VIEW COMPONENT ---
 function CartView({ cartItems, onAddToCart, onRemoveFromCart, onCheckout, totalPrice, mutatingItemId }) {
   return (
     <div className="card">
@@ -143,87 +133,124 @@ function CartView({ cartItems, onAddToCart, onRemoveFromCart, onCheckout, totalP
   );
 }
 
-// --- HELPER COMPONENT: Payment Page ---
-function PaymentPage({ totalPrice, onPaymentSuccess, onBack }) {
-    const [selectedMethod, setSelectedMethod] = useState('card');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [paymentDetails, setPaymentDetails] = useState({
-        cardNumber: '', expiryDate: '', cvv: '', nameOnCard: '', upiId: '', bank: ''
-    });
+// --- PAYMENT PAGE COMPONENT ---
+function PaymentPage({ totalPrice, onBack }) {
+    const { authToken } = useAuth();
+    const api = useApi(authToken);
+    const [clientSecret, setClientSecret] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setPaymentDetails(prev => ({ ...prev, [name]: value }));
-    };
-  
-    const handleFormSubmit = async (e) => {
-      e.preventDefault();
-      setIsProcessing(true);
-      console.log("Simulating payment with details:", paymentDetails);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await onPaymentSuccess();
-      setIsProcessing(false);
-    };
-  
+    useEffect(() => {
+        const createPaymentIntent = async () => {
+            try {
+                const amount = parseFloat(totalPrice);
+                if (isNaN(amount) || amount <= 0) {
+                    setError("Invalid cart total.");
+                    setIsLoading(false);
+                    return;
+                }
+                const response = await api.post('/api/payments/create-payment-intent', { amount });
+                setClientSecret(response.data.clientSecret);
+            } catch (err) {
+                setError('Failed to initialize payment. Please try again.');
+                console.error("Error creating payment intent:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        createPaymentIntent();
+    }, [api, totalPrice]);
+
+    if (isLoading) {
+        return <div className="card text-center p-12"><Loader2 className="animate-spin h-8 w-8 mx-auto" /> <p className="mt-2">Initializing Secure Payment...</p></div>;
+    }
+    if (error) {
+        return <div className="card text-center p-12 text-red-600">{error}</div>;
+    }
+
+    const appearance = { theme: 'stripe' };
+    const options = { clientSecret, appearance };
+
     return (
-      <div className="card max-w-4xl mx-auto">
-        <button onClick={onBack} className="text-primary-600 hover:underline mb-6 text-sm font-medium flex items-center">← Back to Cart</button>
-        <h2 className="text-2xl font-bold mb-6">Complete Your Payment</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-            <div>
-                <h3 className="font-semibold text-lg mb-4">Choose Payment Method</h3>
-                <div className="space-y-3">
-                    <PaymentOption icon={<CreditCard />} label="Credit/Debit Card" value="card" selectedMethod={selectedMethod} setSelectedMethod={setSelectedMethod} />
-                    <PaymentOption icon={<Smartphone />} label="UPI" value="upi" selectedMethod={selectedMethod} setSelectedMethod={setSelectedMethod} />
-                    <PaymentOption icon={<Landmark />} label="Net Banking" value="netbanking" selectedMethod={selectedMethod} setSelectedMethod={setSelectedMethod} />
-                </div>
-            </div>
-            <div>
-                <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
-                    <div className="flex justify-between items-center text-lg">
-                        <span className="font-medium">Amount to Pay:</span>
-                        <span className="font-bold text-xl">₹{totalPrice}</span>
-                    </div>
-                </div>
-                <form onSubmit={handleFormSubmit}>
-                    {selectedMethod === 'card' && (
-                        <div className="space-y-4">
-                            <div className="relative"><CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="cardNumber" value={paymentDetails.cardNumber} onChange={handleInputChange} className="input-field pl-10" placeholder="Card Number" required minLength="16" maxLength="16" /></div>
-                            <div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="nameOnCard" value={paymentDetails.nameOnCard} onChange={handleInputChange} className="input-field pl-10" placeholder="Name on Card" required /></div>
-                            <div className="flex gap-4">
-                                <div className="relative w-1/2"><Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="expiryDate" value={paymentDetails.expiryDate} onChange={handleInputChange} className="input-field pl-10" placeholder="MM / YY" required /></div>
-                                <div className="relative w-1/2"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="password" name="cvv" value={paymentDetails.cvv} onChange={handleInputChange} className="input-field pl-10" placeholder="CVV" required minLength="3" maxLength="3" /></div>
-                            </div>
-                        </div>
-                    )}
-                    {selectedMethod === 'upi' && <div className="relative"><Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><input type="text" name="upiId" value={paymentDetails.upiId} onChange={handleInputChange} className="input-field pl-10" placeholder="yourname@bank" required /></div>}
-                    {selectedMethod === 'netbanking' && <div className="relative"><Landmark className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" /><select name="bank" value={paymentDetails.bank} onChange={handleInputChange} className="input-field pl-10" required><option value="">Select Bank</option><option>State Bank of India</option><option>HDFC Bank</option></select></div>}
-                    <button type="submit" className="w-full btn-primary py-3 mt-8" disabled={isProcessing}>{isProcessing ? 'Placing Order...' : `Pay Securely`}</button>
-                </form>
-            </div>
+        <div className="card max-w-4xl mx-auto">
+            <button onClick={onBack} className="text-primary-600 hover:underline mb-6 text-sm font-medium flex items-center">← Back to Cart</button>
+            <h2 className="text-2xl font-bold mb-6">Complete Your Payment</h2>
+            {clientSecret && (
+                <Elements key={clientSecret} options={options} stripe={useStripe()}>
+                    <CheckoutForm totalPrice={totalPrice} />
+                </Elements>
+            )}
         </div>
-      </div>
     );
 }
 
-const PaymentOption = ({ icon, label, value, selectedMethod, setSelectedMethod }) => (
-    <button onClick={() => setSelectedMethod(value)} className={`w-full flex items-center text-left p-4 border rounded-lg transition-colors ${selectedMethod === value ? 'bg-primary-50 border-primary-500 text-primary-600' : 'hover:bg-gray-50'}`}>
-      <div className="mr-4">{icon}</div>
-      <span className="font-semibold">{label}</span>
-    </button>
-);
+// --- STRIPE CHECKOUT FORM COMPONENT ---
+function CheckoutForm({ totalPrice }) {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [message, setMessage] = useState(null);
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!stripe || !elements) return;
+
+        setIsProcessing(true);
+
+        const { error } = await stripe.confirmPayment({
+            elements,
+            confirmParams: {
+                // After payment, redirect the user directly to their "My Orders" page.
+                // The backend webhook will handle creating the order and clearing the cart.
+                return_url: `${window.location.origin}/my-orders`,
+            },
+        });
+
+        if (error.type === "card_error" || error.type === "validation_error") {
+            setMessage(error.message);
+        } else {
+            setMessage("An unexpected error occurred.");
+        }
+        
+        setIsProcessing(false);
+    };
+
+    return (
+        <form id="payment-form" onSubmit={handleSubmit}>
+            <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
+                <div className="flex justify-between items-center text-lg">
+                    <span className="font-medium">Amount to Pay:</span>
+                    <span className="font-bold text-xl">₹{parseFloat(totalPrice).toFixed(2)}</span>
+                </div>
+            </div>
+            
+            <PaymentElement id="payment-element" />
+
+            <button disabled={isProcessing || !stripe || !elements} id="submit" className="w-full btn-primary py-3 mt-8">
+                <span id="button-text">
+                    {isProcessing ? <Loader2 className="animate-spin h-5 w-5 inline" /> : "Pay Securely"}
+                </span>
+            </button>
+            
+            {message && <div id="payment-message" className="text-red-600 text-center mt-2">{message}</div>}
+        </form>
+    );
+}
+
+// --- ORDER SUCCESS COMPONENT ---
 function OrderSuccess({ onBrowse }) {
     return (
       <div className="card text-center py-12">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold">Order Placed Successfully!</h2>
-        <p className="text-gray-600 my-4">You can now track your order in the "My Orders" section.</p>
+        <p className="text-gray-600 my-4">Your payment was successful. You can now track your order in the "My Orders" section.</p>
         <button onClick={onBrowse} className="btn-primary">Browse More Restaurants</button>
       </div>
     );
 }
 
+// --- EMPTY CART COMPONENT ---
 function EmptyCart({ onBrowse }) {
     return (
       <div className="card">

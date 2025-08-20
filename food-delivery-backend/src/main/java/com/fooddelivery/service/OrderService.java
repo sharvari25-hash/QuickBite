@@ -5,8 +5,6 @@ import com.fooddelivery.enums.DeliveryStatus;
 import com.fooddelivery.enums.OrderStatus;
 import com.fooddelivery.repository.DeliveryRepository;
 import com.fooddelivery.repository.OrderRepository;
-import jakarta.persistence.EntityNotFoundException;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -114,18 +112,14 @@ public class OrderService {
         return payout.max(minimumPayout);
     }
 
-    /**
-     * ★★★ THIS IS THE MISSING METHOD - NOW IMPLEMENTED ★★★
-     * Fetches the order history for a given user.
-     */
+    
     @Transactional(readOnly = true)
     public List<Order> getOrdersByUserId(Long userId) {
-        // Use the new, efficient query
         return orderRepository.findOrdersByUserIdWithDetails(userId);
     }
     
     /**
-     * Fetches orders for a specific restaurant (for the Restaurant Dashboard).
+     * Fetches orders for a specific restaurant .
      */
     @Transactional(readOnly = true)
     public List<Order> getOrdersByRestaurantId(Long restaurantId) {
@@ -134,9 +128,7 @@ public class OrderService {
     
     @Transactional(readOnly = true)
     public Order getOrderByIdWithDetails(Long orderId) {
-        // We will use the findByIdWithDetails method from the repository
-        // to prevent lazy loading exceptions.
-        return orderRepository.findByIdWithDetails(orderId)
+               return orderRepository.findByIdWithDetails(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
     }
 }

@@ -40,8 +40,7 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<User> getAllUsersByRole(RoleType role) {
-        // ★★★ ENSURE THIS LINE IS CALLING THE CORRECT METHOD ★★★
+    public List<User> getAllUsersByRole(RoleType role) {        
         return userRepository.findByRoleWithDetails(role);
     }
 
@@ -73,21 +72,15 @@ public class AdminService {
                 existingProfile.setLicenseNumber(detailsProfile.getLicenseNumber());
                 existingProfile.setVehicleRegistrationNumber(detailsProfile.getVehicleRegistrationNumber());
 
-                // Synchronize the profile status with the user's availability
                 if (existingUser.getAvailable()) {
                     existingProfile.setStatus(com.fooddelivery.enums.ProfileStatus.APPROVED);
                 } else {
                     existingProfile.setStatus(com.fooddelivery.enums.ProfileStatus.PENDING);
                 }
                 
-                // ★★★ THIS IS THE FIX ★★★
-                // Explicitly save the profile to guarantee the changes are persisted.
                 profileRepository.save(existingProfile);
             }
-        }
-
-        // The user object itself doesn't need to be re-saved if only the profile changed,
-        // but it's safe to do so.
+        }        
         return userRepository.save(existingUser);
     }
 
@@ -160,7 +153,6 @@ public class AdminService {
             throw new IllegalStateException("User is not a delivery partner.");
         }
         user.setAvailable(true);
-        // We might also approve their profile here
         if (user.getDeliveryPartnerProfile() != null) {
             user.getDeliveryPartnerProfile().setStatus(ProfileStatus.APPROVED);
         }
