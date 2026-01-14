@@ -1,9 +1,9 @@
 import { allRestaurants } from '../components/mockData';
 
-const USERS_KEY = 'quickbite_users';
-const RESTAURANTS_KEY = 'quickbite_restaurants';
-const ORDERS_KEY = 'quickbite_orders';
-const CART_KEY = 'quickbite_cart';
+const USERS_KEY = 'quickbite_users_v2';
+const RESTAURANTS_KEY = 'quickbite_restaurants_v2';
+const ORDERS_KEY = 'quickbite_orders_v2';
+const CART_KEY = 'quickbite_cart_v2';
 
 // Initial Demo Users
 const initialUsers = [
@@ -50,16 +50,7 @@ export const initializeMockData = () => {
     localStorage.setItem(USERS_KEY, JSON.stringify(initialUsers));
   }
   if (!localStorage.getItem(RESTAURANTS_KEY)) {
-    // Add some menu items to restaurants if they don't have them
-    const restaurantsWithMenus = allRestaurants.map(r => ({
-      ...r,
-      menu: r.menu || [
-        { id: 1, name: 'Special Item 1', price: 200, description: 'Delicious item', vegetarian: true },
-        { id: 2, name: 'Special Item 2', price: 350, description: 'Chef special', vegetarian: false },
-        { id: 3, name: 'Regular Item', price: 150, description: 'Tasty and affordable', vegetarian: true }
-      ]
-    }));
-    localStorage.setItem(RESTAURANTS_KEY, JSON.stringify(restaurantsWithMenus));
+    localStorage.setItem(RESTAURANTS_KEY, JSON.stringify(allRestaurants));
   }
   if (!localStorage.getItem(ORDERS_KEY)) {
     localStorage.setItem(ORDERS_KEY, JSON.stringify([]));

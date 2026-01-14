@@ -9,6 +9,7 @@ import CategoryCard from "../components/CategoryCard";
 import RestaurantCard from "../components/RestaurantCard";
 import { useAuth } from "../contexts/AuthContext";
 import { mockApi } from "../services/mockApi";
+import { categories } from "../components/mockData";
 import {
   Search,
   ShoppingCart,
@@ -28,32 +29,8 @@ const mockRestaurants = [
 ];
 
 // --- STATIC DATA ---
-const categories = [
-  {
-    id: 1,
-    name: "Biryani",
-    image: "/placeholder.svg?height=80&width=80",
-    count: 120,
-  },
-  {
-    id: 2,
-    name: "Pizza",
-    image: "/placeholder.svg?height=80&width=80",
-    count: 85,
-  },
-  {
-    id: 3,
-    name: "Burger",
-    image: "/placeholder.svg?height=80&width=80",
-    count: 95,
-  },
-  {
-    id: 4,
-    name: "Chinese",
-    image: "/placeholder.svg?height=80&width=80",
-    count: 110,
-  },
-];
+// categories are imported from mockData
+
 
 // --- MAIN COMPONENT ---
 export default function CustomerDashboard() {
@@ -168,7 +145,7 @@ export default function CustomerDashboard() {
       .filter(
         (r) =>
           (r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            r.categories?.toLowerCase().includes(searchQuery.toLowerCase())) &&
+            r.category?.toLowerCase().includes(searchQuery.toLowerCase())) &&
           (r.rating || 0) >= filters.minRating
       )
       .sort((a, b) => {
@@ -403,7 +380,7 @@ export default function CustomerDashboard() {
                                 className="bg-gray-50 rounded-xl p-4 flex items-center"
                               >
                                 <img
-                                  src={item.imageUrl || "/placeholder.svg"}
+                                  src={item.image || "/placeholder.svg"}
                                   alt={item.name}
                                   className="w-16 h-16 object-cover rounded-lg mr-4"
                                 />

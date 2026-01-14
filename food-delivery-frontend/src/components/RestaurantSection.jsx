@@ -23,7 +23,7 @@ export default function RestaurantSection() {
         let filtered = allRestaurants;
         if (activeFilter !== "All") {
           filtered = allRestaurants.filter(r => 
-            r.categories && r.categories.includes(activeFilter)
+            r.category && r.category.includes(activeFilter)
           );
         }
         setRestaurants(filtered);
@@ -81,7 +81,7 @@ export default function RestaurantSection() {
             {restaurants.map((restaurant) => (
               <div key={restaurant.id} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer group overflow-hidden border">
                 <div className="relative overflow-hidden">
-                  <img src={restaurant.imageUrl || "/placeholder.svg"} alt={restaurant.name} className="w-full h-48 object-cover group-hover:scale-110 transition-transform" />
+                  <img src={restaurant.image || "/placeholder.svg"} alt={restaurant.name} className="w-full h-48 object-cover group-hover:scale-110 transition-transform" />
                   <button onClick={() => toggleFavorite(restaurant.id)} className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white">
                     <Heart className={`h-4 w-4 ${favorites.has(restaurant.id) ? "text-red-500 fill-current" : "text-gray-600"}`} />
                   </button>
@@ -94,7 +94,7 @@ export default function RestaurantSection() {
                       <span className="text-sm font-semibold">{restaurant.rating || "N/A"}</span>
                     </div>
                   </div>
-                  <p className="text-gray-600 text-sm mb-4 font-medium">{restaurant.categories}</p>
+                  <p className="text-gray-600 text-sm mb-4 font-medium">{restaurant.category}</p>
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <div className="flex items-center space-x-1"><Clock className="h-4 w-4 text-primary-500" /><span>{restaurant.estimatedDeliveryTime || 30} min</span></div>
                     <div className="flex items-center space-x-1"><Truck className="h-4 w-4 text-blue-500" /><span>Free Delivery</span></div>

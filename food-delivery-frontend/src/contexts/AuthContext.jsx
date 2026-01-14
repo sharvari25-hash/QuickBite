@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   // Initialize state by reading from localStorage
   const [user, setUser] = useState(() => {
     try {
-      const storedUser = localStorage.getItem('quickbite_user_session');
+      const storedUser = localStorage.getItem('quickbite_user_session_v2');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
       console.error("Failed to parse user session from localStorage", error);
@@ -32,9 +32,9 @@ export const AuthProvider = ({ children }) => {
   // This effect runs whenever the 'user' object changes to keep localStorage in sync
   useEffect(() => {
     if (user) {
-      localStorage.setItem('quickbite_user_session', JSON.stringify(user));
+      localStorage.setItem('quickbite_user_session_v2', JSON.stringify(user));
     } else {
-      localStorage.removeItem('quickbite_user_session');
+      localStorage.removeItem('quickbite_user_session_v2');
     }
   }, [user]);
 
