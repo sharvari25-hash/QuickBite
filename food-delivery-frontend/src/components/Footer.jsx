@@ -40,7 +40,7 @@ export default function Footer() {
               isVisible ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
             }`}
           >
-            <h3 className="text-3xl font-bold mb-4">Stay updated with QuickEats</h3>
+            <h3 className="text-3xl font-bold mb-4">Stay updated with QuickBite</h3>
             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
               Get the latest updates on new restaurants, exclusive deals, and special offers delivered straight to your
               inbox.
@@ -84,7 +84,7 @@ export default function Footer() {
                 <ChefHat className="h-8 w-8 text-white" />
               </div>
               <div className="text-2xl font-bold">
-                Quick<span className="text-primary-500">Eats</span>
+                Quick<span className="text-primary-500">Bite</span>
               </div>
             </div>
             <p className="text-gray-400 mb-6 leading-relaxed">
@@ -171,7 +171,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center space-x-3 text-gray-400">
                 <Mail className="h-5 w-5 text-primary-500 flex-shrink-0" />
-                <span>support@quickeats.com</span>
+                <span>support@quickbite.com</span>
               </div>
               <div className="flex items-start space-x-3 text-gray-400">
                 <MapPin className="h-5 w-5 text-primary-500 mt-1 flex-shrink-0" />
@@ -212,7 +212,7 @@ export default function Footer() {
             }`}
           >
             <div className="text-gray-400 text-sm text-center sm:text-left">
-              &copy; 2024 QuickEats. All rights reserved. Made with ❤️ for food lovers.
+              &copy; 2024 QuickBite. All rights reserved. Made with ❤️ for food lovers.
             </div>
             <div className="flex space-x-6 text-sm text-gray-400">
               <a href="#" className="hover:text-white transition-colors duration-300">

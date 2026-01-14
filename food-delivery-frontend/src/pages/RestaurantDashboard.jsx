@@ -2,45 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useAuth } from "../contexts/AuthContext"
+import { mockApi } from "../services/mockApi"
 import { 
   Store, Package, DollarSign, Menu, LogOut, Edit, Trash2, XCircle, PlusCircle, Loader2, ChevronDown, ChevronUp 
 } from "lucide-react"
-
-// --- Configuration ---
-const API_BASE_URL = "http://localhost:8080/api/restaurants";
-
-// --- Reusable API Hook ---
-const useRestaurantApi = () => {
-  const { user, logout } = useAuth();
-
-  const apiFetch = useCallback(async (endpoint, options = {}) => {
-    const token = user?.token;
-    if (!token) {
-      console.error("Authentication token is missing. Logging out.");
-      logout();
-      throw new Error("User is not authenticated.");
-    }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Failed to read error response.');
-      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
-    }
-
-    if (response.status === 204) { return null; }
-    return response.json();
-  }, [user, logout]);
-
-  return apiFetch;
-};
 
 // --- Reusable Modal Component ---
 const Modal = ({ isOpen, onClose, title, children }) => {
@@ -93,7 +58,7 @@ const OrderDetails = ({ order }) => {
                 {order.items.map(item => (
                     <li key={item.id} className="flex justify-between items-center text-sm">
                         <span>{item.quantity} x {item.menuItem?.name || 'Unknown Item'}</span>
-                        <span className="font-medium">${(item.lineTotal || 0).toFixed(2)}</span>
+                        <span className="font-medium">₹{(item.lineTotal || (item.menuItem.price * item.quantity) || 0).toFixed(2)}</span>
                     </li>
                 ))}
             </ul>
@@ -103,7 +68,6 @@ const OrderDetails = ({ order }) => {
 
 export default function RestaurantDashboard() {
     const { user, logout } = useAuth();
-    const api = useRestaurantApi();
     const [activeTab, setActiveTab] = useState("orders");
     const [restaurant, setRestaurant] = useState(null);
     const [orders, setOrders] = useState([]);
@@ -123,14 +87,15 @@ export default function RestaurantDashboard() {
             setLoading(true);
             setError(null);
             try {
-                const [detailsData, ordersData, menuData] = await Promise.all([
-                    api('/my/details'),
-                    api('/my/orders'),
-                    api('/my/menu')
-                ]);
-                setRestaurant(detailsData);
+                // Mock API calls
+                // Assuming user has restaurantId
+                const restaurantId = user.restaurantId || 1; 
+                const restaurantData = await mockApi.getRestaurantById(restaurantId);
+                const ordersData = await mockApi.getOrders('RESTAURANT', restaurantId);
+                
+                setRestaurant(restaurantData);
                 setOrders(ordersData);
-                setMenuItems(menuData);
+                setMenuItems(restaurantData?.menu || []);
             } catch (err) {
                 console.error("Error fetching data:", err);
                 setError(err.message);
@@ -139,7 +104,7 @@ export default function RestaurantDashboard() {
             }
         };
         fetchData();
-    }, [user, api]);
+    }, [user]);
 
     const handleOrderClick = (orderId) => {
         setExpandedOrderId(prevId => (prevId === orderId ? null : orderId));
@@ -147,7 +112,7 @@ export default function RestaurantDashboard() {
 
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
-            const updatedOrder = await api(`/my/orders/${orderId}/status?status=${newStatus}`, { method: 'PUT' });
+            const updatedOrder = await mockApi.updateOrderStatus(orderId, newStatus);
             setOrders(prevOrders => 
                 prevOrders.map(order => order.id === orderId ? updatedOrder : order)
             );
@@ -160,15 +125,24 @@ export default function RestaurantDashboard() {
         setFormError(null);
         setIsSaving(true);
         const isEditing = !!itemData.id;
-        const endpoint = isEditing ? `/my/menu/${itemData.id}` : '/my/menu';
-        const method = isEditing ? "PUT" : "POST";
+        
         try {
-            const savedItem = await api(endpoint, { method, body: JSON.stringify(itemData) });
+            // Since we don't have explicit menu API in mockApi yet, we'll simulating saving to local state
+            // In a real app, this would be an API call
+            await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
+            
+            let updatedItems;
             if (isEditing) {
-                setMenuItems(menuItems.map(item => item.id === savedItem.id ? savedItem : item));
+                updatedItems = menuItems.map(item => item.id === itemData.id ? { ...item, ...itemData } : item);
             } else {
-                setMenuItems([...menuItems, savedItem]);
+                updatedItems = [...menuItems, { ...itemData, id: Date.now() }];
             }
+            
+            setMenuItems(updatedItems);
+            
+            // Optionally update the persistent storage via a 'updateRestaurant' method if we had one
+            // For now, local state is enough for the demo session
+            
             setIsMenuModalOpen(false);
         } catch(err) {
             setFormError(err.message);
@@ -180,7 +154,7 @@ export default function RestaurantDashboard() {
     const handleDeleteMenuItem = async (itemId) => {
         if (!window.confirm("Are you sure you want to delete this item?")) return;
         try {
-            await api(`/my/menu/${itemId}`, { method: "DELETE" });
+            await new Promise(resolve => setTimeout(resolve, 300));
             setMenuItems(menuItems.filter(item => item.id !== itemId));
         } catch(err) {
             setError(err.message);
@@ -191,8 +165,8 @@ export default function RestaurantDashboard() {
         e.preventDefault();
         setIsSaving(true);
         try {
-            const updatedRestaurant = await api('/my/details', { method: "PUT", body: JSON.stringify(restaurant) });
-            setRestaurant(updatedRestaurant);
+             await new Promise(resolve => setTimeout(resolve, 500));
+            // Just update local state for now
             setIsEditingProfile(false);
         } catch(err) {
             setError(err.message);
@@ -255,17 +229,17 @@ export default function RestaurantDashboard() {
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>
                                                     <h3 className="font-semibold">Order #{order.id}</h3>
-                                                    <p className="text-sm text-gray-500">{new Date(order.orderDate).toLocaleString()}</p>
+                                                    <p className="text-sm text-gray-500">{new Date(order.orderDate || order.createdAt).toLocaleString()}</p>
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="font-bold">₹{(order.totalPrice || 0).toFixed(2)}</p>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>{order.orderStatus?.replace("_", " ") || 'UNKNOWN'}</span>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status || order.orderStatus)}`}>{order.status?.replace("_", " ") || order.orderStatus?.replace("_", " ") || 'UNKNOWN'}</span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex space-x-2">
-                                                    {order.orderStatus === "PENDING" && <button onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "PREPARING"); }} className="bg-blue-500 text-white text-sm px-3 py-1 rounded hover:bg-blue-600">Accept</button>}
-                                                    {order.orderStatus === "PREPARING" && <button onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "READY_FOR_PICKUP"); }} className="bg-green-500 text-white text-sm px-3 py-1 rounded hover:bg-green-600">Mark Ready</button>}
+                                                    {(order.status === "PENDING" || order.orderStatus === "PENDING") && <button onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "PREPARING"); }} className="bg-blue-500 text-white text-sm px-3 py-1 rounded hover:bg-blue-600">Accept</button>}
+                                                    {(order.status === "PREPARING" || order.orderStatus === "PREPARING") && <button onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, "READY_FOR_PICKUP"); }} className="bg-green-500 text-white text-sm px-3 py-1 rounded hover:bg-green-600">Mark Ready</button>}
                                                 </div>
                                                 {expandedOrderId === order.id ? <ChevronUp className="text-gray-500"/> : <ChevronDown className="text-gray-500"/>}
                                             </div>
@@ -287,7 +261,7 @@ export default function RestaurantDashboard() {
                                             <img src={item.imageUrl || "https://via.placeholder.com/150"} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-3"/>
                                             <div className="flex justify-between items-start mb-2">
                                                 <div><h3 className="font-semibold">{item.name}</h3><p className="text-gray-600 text-sm">{item.description}</p></div>
-                                                <p className="text-green-600 font-bold">${(item.price || 0).toFixed(2)}</p>
+                                                <p className="text-green-600 font-bold">₹{(item.price || 0).toFixed(2)}</p>
                                             </div>
                                             <span className={`text-xs px-2 py-1 rounded-full ${item.available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{item.available ? "Available" : "Out of Stock"}</span>
                                         </div>

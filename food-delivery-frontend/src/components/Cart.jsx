@@ -2,38 +2,17 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from "../contexts/AuthContext";
-import axios from "axios";
-
-// Stripe Imports
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { mockApi } from "../services/mockApi";
 
 // Icon Imports
 import { 
     ShoppingCart, Plus, Minus, CheckCircle, Loader2
 } from 'lucide-react';
 
-// --- API HELPER HOOK ---
-const useApi = (authToken) => {
-  const api = useMemo(() => {
-    const instance = axios.create({ baseURL: "http://localhost:8080" });
-    instance.interceptors.request.use(
-      (config) => {
-        if (authToken) config.headers["Authorization"] = `Bearer ${authToken}`;
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-    return instance;
-  }, [authToken]);
-  return api;
-};
-
-
 // --- MAIN CART COMPONENT ---
 export default function Cart({ onBrowse, onOrderSuccess }) {
-  const { authToken } = useAuth();
-  const api = useApi(authToken);
-
+  const { user } = useAuth();
+  
   const [cart, setCart] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,7 +20,7 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
   const [mutatingItemId, setMutatingItemId] = useState(null);
 
   useEffect(() => {
-    if (!authToken) {
+    if (!user) {
       setIsLoading(false);
       setError("Please log in to view your cart.");
       return;
@@ -50,24 +29,24 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
     const fetchCart = async () => {
       setIsLoading(true);
       try {
-        const response = await api.get('/api/customer/cart');
-        setCart(response.data);
+        const data = await mockApi.getCart();
+        setCart(data);
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to fetch cart.");
+        setError(err.message || "Failed to fetch cart.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchCart();
-  }, [authToken, api]);
+  }, [user]);
 
   const handleAddToCart = async (menuItem) => {
     setMutatingItemId(menuItem.id);
     try {
-      const response = await api.post(`/api/customer/cart/items?menuItemId=${menuItem.id}&quantity=1`);
-      setCart(response.data);
+      const updatedCart = await mockApi.addToCart(menuItem, 1);
+      setCart(updatedCart);
     } catch (err) {
-      alert(`Error: ${err.response?.data?.message || err.message}`);
+      alert(`Error: ${err.message}`);
     } finally {
       setMutatingItemId(null);
     }
@@ -76,10 +55,10 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
   const handleRemoveFromCart = async (cartItemId) => {
     setMutatingItemId(cartItemId);
     try {
-      const response = await api.delete(`/api/customer/cart/items/${cartItemId}`);
-      setCart(response.data);
+      const updatedCart = await mockApi.removeFromCart(cartItemId);
+      setCart(updatedCart);
     } catch (err) {
-      alert(`Error: ${err.response?.data?.message || err.message}`);
+      alert(`Error: ${err.message}`);
     } finally {
       setMutatingItemId(null);
     }
@@ -93,10 +72,10 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
   if (error) return <div className="card text-center p-12 text-red-600">Error: {error}</div>;
 
   switch (checkoutStep) {
-    case 'payment': return <PaymentPage totalPrice={totalPrice} onBack={handleBackToCart} />;
-    case 'success': return <OrderSuccess onBrowse={onBrowse} />; // This case is now mainly for non-redirect flows
+    case 'payment': return <MockPaymentPage cart={cart} totalPrice={totalPrice} onBack={handleBackToCart} onOrderSuccess={onOrderSuccess} user={user} />;
+    case 'success': return <OrderSuccess onBrowse={onBrowse} />;
     default:
-      if (!cart || cart.items.length === 0) return <EmptyCart onBrowse={onBrowse} />;
+      if (!cart || !cart.items || cart.items.length === 0) return <EmptyCart onBrowse={onBrowse} />;
       return <CartView cartItems={cart.items} onAddToCart={handleAddToCart} onRemoveFromCart={handleRemoveFromCart} onCheckout={handleProceedToCheckout} totalPrice={totalPrice} mutatingItemId={mutatingItemId} />;
   }
 }
@@ -133,108 +112,65 @@ function CartView({ cartItems, onAddToCart, onRemoveFromCart, onCheckout, totalP
   );
 }
 
-// --- PAYMENT PAGE COMPONENT ---
-function PaymentPage({ totalPrice, onBack }) {
-    const { authToken } = useAuth();
-    const api = useApi(authToken);
-    const [clientSecret, setClientSecret] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
-        const createPaymentIntent = async () => {
-            try {
-                const amount = parseFloat(totalPrice);
-                if (isNaN(amount) || amount <= 0) {
-                    setError("Invalid cart total.");
-                    setIsLoading(false);
-                    return;
-                }
-                const response = await api.post('/api/payments/create-payment-intent', { amount });
-                setClientSecret(response.data.clientSecret);
-            } catch (err) {
-                setError('Failed to initialize payment. Please try again.');
-                console.error("Error creating payment intent:", err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        createPaymentIntent();
-    }, [api, totalPrice]);
-
-    if (isLoading) {
-        return <div className="card text-center p-12"><Loader2 className="animate-spin h-8 w-8 mx-auto" /> <p className="mt-2">Initializing Secure Payment...</p></div>;
-    }
-    if (error) {
-        return <div className="card text-center p-12 text-red-600">{error}</div>;
-    }
-
-    const appearance = { theme: 'stripe' };
-    const options = { clientSecret, appearance };
-
-    return (
-        <div className="card max-w-4xl mx-auto">
-            <button onClick={onBack} className="text-primary-600 hover:underline mb-6 text-sm font-medium flex items-center">← Back to Cart</button>
-            <h2 className="text-2xl font-bold mb-6">Complete Your Payment</h2>
-            {clientSecret && (
-                <Elements key={clientSecret} options={options} stripe={useStripe()}>
-                    <CheckoutForm totalPrice={totalPrice} />
-                </Elements>
-            )}
-        </div>
-    );
-}
-
-// --- STRIPE CHECKOUT FORM COMPONENT ---
-function CheckoutForm({ totalPrice }) {
-    const stripe = useStripe();
-    const elements = useElements();
+// --- MOCK PAYMENT PAGE COMPONENT ---
+function MockPaymentPage({ totalPrice, onBack, onOrderSuccess, cart, user }) {
     const [isProcessing, setIsProcessing] = useState(false);
-    const [message, setMessage] = useState(null);
+    const [success, setSuccess] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!stripe || !elements) return;
-
+    const handlePayment = async () => {
         setIsProcessing(true);
-
-        const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-                // After payment, redirect the user directly to their "My Orders" page.
-                // The backend webhook will handle creating the order and clearing the cart.
-                return_url: `${window.location.origin}/my-orders`,
-            },
-        });
-
-        if (error.type === "card_error" || error.type === "validation_error") {
-            setMessage(error.message);
-        } else {
-            setMessage("An unexpected error occurred.");
+        try {
+            // Create order via mockApi
+            await mockApi.createOrder({
+                customerId: user.id,
+                items: cart.items,
+                totalPrice: parseFloat(totalPrice),
+                deliveryAddress: user.address || 'Default Address',
+                restaurantId: cart.items[0]?.menuItem?.restaurantId || 1 // Assume all items from same restaurant for now
+            });
+            
+            // Clear cart
+            await mockApi.clearCart();
+            
+            setSuccess(true);
+            setTimeout(() => {
+                if(onOrderSuccess) onOrderSuccess();
+            }, 2000);
+            
+        } catch (error) {
+            alert("Payment failed: " + error.message);
+        } finally {
+            setIsProcessing(false);
         }
-        
-        setIsProcessing(false);
     };
 
+    if (success) {
+        return <OrderSuccess onBrowse={() => window.location.href = '/'} />;
+    }
+
     return (
-        <form id="payment-form" onSubmit={handleSubmit}>
+        <div className="card max-w-lg mx-auto">
+             <button onClick={onBack} className="text-primary-600 hover:underline mb-6 text-sm font-medium flex items-center">← Back to Cart</button>
+            <h2 className="text-2xl font-bold mb-6">Checkout</h2>
+            
             <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
                 <div className="flex justify-between items-center text-lg">
-                    <span className="font-medium">Amount to Pay:</span>
-                    <span className="font-bold text-xl">₹{parseFloat(totalPrice).toFixed(2)}</span>
+                    <span className="font-medium">Total Amount:</span>
+                    <span className="font-bold text-xl">₹{totalPrice}</span>
                 </div>
             </div>
-            
-            <PaymentElement id="payment-element" />
 
-            <button disabled={isProcessing || !stripe || !elements} id="submit" className="w-full btn-primary py-3 mt-8">
-                <span id="button-text">
-                    {isProcessing ? <Loader2 className="animate-spin h-5 w-5 inline" /> : "Pay Securely"}
-                </span>
-            </button>
-            
-            {message && <div id="payment-message" className="text-red-600 text-center mt-2">{message}</div>}
-        </form>
+            <div className="space-y-4">
+                <p className="text-sm text-gray-500">This is a mock payment. No real money will be deducted.</p>
+                <button 
+                    onClick={handlePayment} 
+                    disabled={isProcessing}
+                    className="w-full btn-primary py-3 flex items-center justify-center"
+                >
+                    {isProcessing ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : "Pay & Place Order"}
+                </button>
+            </div>
+        </div>
     );
 }
 
@@ -244,7 +180,7 @@ function OrderSuccess({ onBrowse }) {
       <div className="card text-center py-12">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold">Order Placed Successfully!</h2>
-        <p className="text-gray-600 my-4">Your payment was successful. You can now track your order in the "My Orders" section.</p>
+        <p className="text-gray-600 my-4">Your order has been placed successfully. You can track it in the "My Orders" section.</p>
         <button onClick={onBrowse} className="btn-primary">Browse More Restaurants</button>
       </div>
     );

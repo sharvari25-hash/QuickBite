@@ -1,14 +1,12 @@
+"use client"
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Package, Clock, CheckCircle, Soup, Bike, Loader2 } from 'lucide-react';
-
-// Configuration
-const API_BASE_URL = "http://localhost:8080/api";
-const POLLING_INTERVAL_MS = 10000; // Fetch new data every 10 seconds
+import { mockApi } from '../services/mockApi';
 
 // --- Child Component: Visual Status Tracker ---
 const StatusTracker = ({ orderStatus, deliveryStatus }) => {
-    // ★★★ FIX #2: USE THE CORRECT ICON COMPONENTS ★★★
     const statuses = [
         { name: 'CONFIRMED', icon: CheckCircle, statuses: ['PENDING', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED'] },
         { name: 'PREPARING', icon: Soup, statuses: ['PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED'] },
@@ -46,20 +44,20 @@ const OrderItem = ({ order }) => {
         <div>
           <p className="font-bold text-gray-800">Order #{order.id}</p>
           <p className="text-sm text-gray-500">
-            Placed on: {new Date(order.orderDate).toLocaleString()}
+            Placed on: {new Date(order.createdAt || order.orderDate).toLocaleString()}
           </p>
         </div>
         <div className="text-right mt-2 sm:mt-0">
-          <p className="text-lg font-bold">₹{(order.totalPrice || 0).toFixed(2)}</p>
+          <p className="text-lg font-bold">₹{(order.totalPrice || order.total || 0).toFixed(2)}</p>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
             <Clock className="h-3 w-3 mr-1" />
-            {order.delivery?.status?.replace("_", " ") || order.orderStatus?.replace("_", " ") || 'UNKNOWN'}
+            {order.delivery?.status?.replace("_", " ") || order.status?.replace("_", " ") || 'UNKNOWN'}
           </span>
         </div>
       </div>
       
       <div className="my-4">
-        <StatusTracker orderStatus={order.orderStatus} deliveryStatus={order.delivery?.status} />
+        <StatusTracker orderStatus={order.status} deliveryStatus={order.delivery?.status} />
       </div>
 
       <div className="space-y-2 border-t pt-3">
@@ -71,7 +69,7 @@ const OrderItem = ({ order }) => {
               <p className="text-sm font-medium">{item.menuItem?.name}</p>
               <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
             </div>
-            <p className="text-sm font-semibold">₹{(item.lineTotal || 0).toFixed(2)}</p>
+            <p className="text-sm font-semibold">₹{(item.lineTotal || (item.menuItem.price * item.quantity) || 0).toFixed(2)}</p>
           </div>
         ))}
       </div>
@@ -86,58 +84,27 @@ export default function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  const pollingTimer = useRef(null);
-
-  const ACTIVE_STATUSES = ['PENDING', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'];
 
   useEffect(() => {
     const fetchOrders = async () => {
-      if (!authToken) {
+      if (!user) {
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/customer/my-orders`, {
-          headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch order history.');
-        const data = await response.json();
+        // Use mockApi
+        const data = await mockApi.getOrders(user.role, user.id);
         setOrders(data);
-        
-        const hasActiveOrder = data.some(order => ACTIVE_STATUSES.includes(order.orderStatus));
-        
-        if (pollingTimer.current) {
-          clearTimeout(pollingTimer.current);
-        }
-        
-        if (hasActiveOrder) {
-          console.log("Active orders found. Polling for updates...");
-          pollingTimer.current = setTimeout(fetchOrders, POLLING_INTERVAL_MS);
-        } else {
-          console.log("No active orders. Stopping polling.");
-        }
-        
       } catch (err) {
         setError(err.message);
-        // Stop polling on error
-        if (pollingTimer.current) clearTimeout(pollingTimer.current);
       } finally {
-        if (loading) {
-            setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
     fetchOrders();
-
-    return () => {
-      if (pollingTimer.current) {
-        clearTimeout(pollingTimer.current);
-      }
-    };
-  }, [authToken]);
+  }, [user]);
 
   if (loading) {
     return (

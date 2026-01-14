@@ -1,51 +1,32 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Star, Clock, Truck, Heart } from "lucide-react";
-
-// This is a new, unauthenticated API helper hook.
-const usePublicApi = () => {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  
-  const publicApiFetch = useCallback(async (endpoint, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed: ${response.status}`);
-    }
-    return response.json();
-  }, []);
-
-  return publicApiFetch;
-};
+import { mockApi } from "../services/mockApi";
 
 export default function RestaurantSection() {
-  const publicApi = usePublicApi();
-  
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [favorites, setFavorites] = useState(new Set()); // This remains client-side for now
+  const [favorites, setFavorites] = useState(new Set()); 
 
-  // Fetch restaurants from the backend whenever the filter changes
+  // Fetch restaurants from mockApi
   useEffect(() => {
     const fetchRestaurants = async () => {
       setIsLoading(true);
       setError("");
       try {
-        let endpoint = '/api/restaurants';
+        const allRestaurants = await mockApi.getRestaurants();
+        
+        // Local filtering
+        let filtered = allRestaurants;
         if (activeFilter !== "All") {
-          endpoint += `?category=${activeFilter}`;
+          filtered = allRestaurants.filter(r => 
+            r.categories && r.categories.includes(activeFilter)
+          );
         }
-        const data = await publicApi(endpoint);
-        setRestaurants(data);
+        setRestaurants(filtered);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -54,7 +35,7 @@ export default function RestaurantSection() {
     };
 
     fetchRestaurants();
-  }, [activeFilter, publicApi]);
+  }, [activeFilter]);
 
   const toggleFavorite = (id) => {
     const newFavorites = new Set(favorites);
@@ -66,7 +47,7 @@ export default function RestaurantSection() {
     setFavorites(newFavorites);
   };
 
-  const filters = ["All", "Pizza", "Burgers", "Chinese", "Biryani", "Indian"]; // Updated filters
+  const filters = ["All", "Pizza", "Burgers", "Chinese", "Biryani", "Indian"]; 
 
   return (
     <section id="restaurants" className="bg-gray-50 py-16">
@@ -130,8 +111,6 @@ export default function RestaurantSection() {
                 <p className="text-gray-600">Try a different category or check back later!</p>
             </div>
         )}
-
-        {/* View More Button */}
         
       </div>
     </section>

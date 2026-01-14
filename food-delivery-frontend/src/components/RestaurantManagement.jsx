@@ -3,42 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Search, Edit, Trash2 } from "lucide-react";
-import Modal from "./Modal"; // Assuming you have a Modal component
-
-// Helper hook for making authenticated API calls, reusable across components
-const useApi = (authToken) => {
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-  const apiFetch = useCallback(
-    async (endpoint, options = {}) => {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-          ...options.headers,
-        },
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message ||
-            `Request failed: ${response.status} ${response.statusText}`
-        );
-      }
-      if (response.status === 204) return null; // Handle No Content for DELETE
-      return response.json();
-    },
-    [authToken]
-  );
-
-  return apiFetch;
-};
+import Modal from "./Modal"; 
+import { mockApi } from "../services/mockApi";
 
 export default function RestaurantManagement() {
-  const { authToken } = useAuth();
-  const api = useApi(authToken);
+  const { user } = useAuth();
 
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,28 +19,20 @@ export default function RestaurantManagement() {
     setIsLoading(true);
     setError("");
     try {
-      // Fetch both pending and active restaurants in parallel
-      const [pending, active] = await Promise.all([
-        api("/api/admin/restaurants/pending"),
-        api("/api/restaurants"), // This is the public endpoint for active restaurants
-      ]);
-      // Combine and sort or manage as needed
-      setRestaurants([...pending, ...active]);
+      const allRestaurants = await mockApi.getRestaurants();
+      setRestaurants(allRestaurants);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [api]);
+  }, []);
 
   useEffect(() => {
-    if (authToken) {
-      fetchRestaurants();
-    }
-  }, [authToken, fetchRestaurants]);
+    fetchRestaurants();
+  }, [fetchRestaurants]);
 
   const handleEdit = (restaurant) => {
-    // Ensure address is not null when opening the modal
     setSelectedRestaurant({ ...restaurant, address: restaurant.address || {} });
     setIsModalOpen(true);
   };
@@ -81,13 +42,8 @@ export default function RestaurantManagement() {
     if (!selectedRestaurant) return;
 
     try {
-      // The backend updateUser can handle the full object now
-      const updatedRestaurant = await api(`/api/admin/restaurants/${selectedRestaurant.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(selectedRestaurant)
-      });
-      
-      setRestaurants(prev => prev.map(r => (r.id === updatedRestaurant.id ? updatedRestaurant : r)));
+      // Mock update
+      setRestaurants(prev => prev.map(r => (r.id === selectedRestaurant.id ? selectedRestaurant : r)));
       setIsModalOpen(false);
       setSelectedRestaurant(null);
     } catch (err) {
@@ -95,13 +51,17 @@ export default function RestaurantManagement() {
     }
   };
   
-  // Helper for top-level field changes
+  const handleDelete = async (resto) => {
+      if(window.confirm(`Are you sure you want to delete ${resto.name}?`)) {
+          setRestaurants(prev => prev.filter(r => r.id !== resto.id));
+      }
+  }
+  
   const handleRestaurantChange = (e) => {
     const { name, value } = e.target;
     setSelectedRestaurant(prev => ({ ...prev, [name]: value }));
   };
   
-  // Helper for nested address field changes
   const handleAddressChange = (e) => {
     const { name, value } = e.target;
     setSelectedRestaurant(prev => ({
@@ -122,7 +82,6 @@ export default function RestaurantManagement() {
       {error && <div className="text-red-500 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
       <div className="overflow-x-auto">
           <table className="min-w-full bg-white text-left">
-          {/* ★★★ THIS IS THE CORRECTED TABLE HEAD ★★★ */}
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -161,7 +120,6 @@ export default function RestaurantManagement() {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Restaurant">
         {selectedRestaurant && (
-          // ★★★ THIS IS THE COMPLETE AND CORRECTED MODAL FORM ★★★
           <form onSubmit={handleSaveChanges} className="max-h-[70vh] overflow-y-auto p-1">
             <div className="space-y-4">
               <h3 className="text-lg font-semibold border-b pb-2">Restaurant Details</h3>

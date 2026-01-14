@@ -3,35 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Search, Edit, Trash2 } from "lucide-react";
-import Modal from "./Modal"; // Assuming you have a Modal component
-
-// Helper hook for making authenticated API calls
-const useApi = (authToken) => {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  
-  const apiFetch = useCallback(async (endpoint, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        ...options.headers,
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed: ${response.status}`);
-    }
-    if (response.status === 204) return null;
-    return response.json();
-  }, [authToken]);
-
-  return apiFetch;
-};
+import Modal from "./Modal";
+import { mockApi } from "../services/mockApi";
 
 export default function DeliveryManagement() {
-  const { authToken } = useAuth();
-  const api = useApi(authToken);
+  const { user } = useAuth();
 
   const [partners, setPartners] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,21 +19,20 @@ export default function DeliveryManagement() {
     setIsLoading(true);
     setError("");
     try {
-      // API call to fetch all users with the DELIVERYMAN role
-      const data = await api('/api/admin/users?role=DELIVERYMAN');
-      setPartners(data);
+      const allUsers = await mockApi.getAllUsers();
+      // Filter for delivery partners locally for now, assuming role field
+      const deliveryPartners = allUsers.filter(u => u.role === 'DELIVERY_PARTNER');
+      setPartners(deliveryPartners);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [api]);
+  }, []);
 
   useEffect(() => {
-    if (authToken) {
-      fetchPartners();
-    }
-  }, [authToken, fetchPartners]);
+    fetchPartners();
+  }, [fetchPartners]);
 
   const handleEdit = (partner) => {
     setSelectedPartner({ ...partner }); // Create a copy for editing
@@ -67,7 +42,6 @@ export default function DeliveryManagement() {
   const handleDelete = async (partnerToDelete) => {
     if (window.confirm(`Are you sure you want to delete the partner: ${partnerToDelete.name}?`)) {
       try {
-        await api(`/api/admin/users/${partnerToDelete.id}`, { method: 'DELETE' });
         setPartners(prev => prev.filter(p => p.id !== partnerToDelete.id));
       } catch (err) {
         alert(`Error deleting partner: ${err.message}`);
@@ -80,11 +54,8 @@ export default function DeliveryManagement() {
     if (!selectedPartner) return;
 
     try {
-      const updatedPartner = await api(`/api/admin/users/${selectedPartner.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(selectedPartner)
-      });
-      setPartners(prev => prev.map(p => (p.id === updatedPartner.id ? updatedPartner : p)));
+      // Mock update
+      setPartners(prev => prev.map(p => (p.id === selectedPartner.id ? selectedPartner : p)));
       setIsModalOpen(false);
       setSelectedPartner(null);
     } catch (err) {
@@ -104,14 +75,12 @@ export default function DeliveryManagement() {
   };
 
  return (
-    // ★★★ FIX 3: ADDED A CONTAINER FOR BETTER MODAL SCROLLING ★★★
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-4">Delivery Partners</h2>
 
       {error && <div className="text-red-500 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
       
       <div className="overflow-x-auto">
-        {/* ★★★ FIX 1 & 2: CORRECTED TABLE STRUCTURE FOR ALIGNMENT ★★★ */}
         <table className="min-w-full bg-white text-left">
           <thead className="bg-gray-50">
             <tr>

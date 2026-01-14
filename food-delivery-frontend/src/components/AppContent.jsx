@@ -34,6 +34,8 @@ export default function AppContent() {
     case "restaurant":
       return <RestaurantDashboard />
     case "deliveryman":
+    case "delivery_partner":
+    case "delivery":
       return <DeliveryDashboard />
     case "admin":
       return <AdminDashboard />

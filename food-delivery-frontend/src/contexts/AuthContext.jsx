@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { mockApi } from "../services/mockApi";
 
 // Create the context
 const AuthContext = createContext(null);
@@ -13,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   // Initialize state by reading from localStorage
   const [user, setUser] = useState(() => {
     try {
-      const storedUser = localStorage.getItem('quickeats_user_session');
+      const storedUser = localStorage.getItem('quickbite_user_session');
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
       console.error("Failed to parse user session from localStorage", error);
@@ -31,51 +32,45 @@ export const AuthProvider = ({ children }) => {
   // This effect runs whenever the 'user' object changes to keep localStorage in sync
   useEffect(() => {
     if (user) {
-      localStorage.setItem('quickeats_user_session', JSON.stringify(user));
+      localStorage.setItem('quickbite_user_session', JSON.stringify(user));
     } else {
-      localStorage.removeItem('quickeats_user_session');
+      localStorage.removeItem('quickbite_user_session');
     }
   }, [user]);
 
   const login = async (email, password) => {
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Login failed. Please check your credentials.');
-      }
-
-      const data = await response.json();
+      // Use mockApi instead of fetch
+      const data = await mockApi.login(email, password);
 
       if (data && data.token) {
-        // 1. Set the user state. This will trigger the useEffect to save to localStorage.
         setUser(data);
 
-        // 2. AFTER setting state, navigate to the correct dashboard.
+        // Navigation logic
         if (data.role === 'CUSTOMER') {
-          navigate('/'); // Or your customer dashboard route
+          navigate('/');
         } else if (data.role === 'RESTAURANT') {
-          navigate('/dashboard'); // Your restaurant dashboard route
+          navigate('/dashboard'); 
+        } else if (data.role === 'ADMIN') {
+            navigate('/admin-dashboard');
+        } else if (data.role === 'DELIVERY_PARTNER') {
+            navigate('/delivery-partner-dashboard');
         } else {
-          navigate('/'); // A sensible default
+          navigate('/'); 
         }
+        return data;
       } else {
         throw new Error('Login response did not include an authentication token.');
       }
     } catch (error) {
       console.error('Login error:', error);
-      throw error; // Re-throw the error so the AuthModal can display it
+      throw error; 
     }
   };
 
   const logout = () => {
-    setUser(null); // This triggers the useEffect to clear localStorage
-    navigate('/login'); // Redirect to the login page
+    setUser(null); 
+    navigate('/login'); 
   };
   
   const value = {
@@ -83,12 +78,10 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     logout,
-    // Provide the token directly for convenience in API helpers
     authToken: user?.token,
     isAuthenticated: !!user?.token,
   };
 
-  // Render children only when not in the initial loading state
   return (
     <AuthContext.Provider value={value}>
       {!isLoading && children}
@@ -96,7 +89,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to easily consume the context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

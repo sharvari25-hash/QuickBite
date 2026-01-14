@@ -4,34 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Search, Edit, Trash2 } from "lucide-react";
 import Modal from "../components/Modal";
-
-// Helper hook for making authenticated API calls
-const useApi = (authToken) => {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  
-  const apiFetch = useCallback(async (endpoint, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        ...options.headers,
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed: ${response.status}`);
-    }
-    if (response.status === 204) return null; // Handle No Content for DELETE
-    return response.json();
-  }, [authToken]);
-
-  return apiFetch;
-};
+import { mockApi } from "../services/mockApi";
 
 export default function UserManagement() {
-  const { authToken } = useAuth();
-  const api = useApi(authToken);
+  const { user } = useAuth();
 
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,34 +20,29 @@ export default function UserManagement() {
     setIsLoading(true);
     setError("");
     try {
-      // Fetch all roles in parallel
-      const rolesToFetch = ['CUSTOMER', 'RESTAURANT', 'DELIVERYMAN', 'ADMIN'];
-      const userPromises = rolesToFetch.map(role => api(`/api/admin/users?role=${role}`));
-      const usersByRole = await Promise.all(userPromises);
-      
-      // Flatten the array of arrays into a single user list
-      const allUsers = usersByRole.flat();
+      const allUsers = await mockApi.getAllUsers();
       setUsers(allUsers);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [api]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   const handleEdit = (user) => {
-    setSelectedUser({ ...user }); // Create a copy to edit
+    setSelectedUser({ ...user }); 
     setIsModalOpen(true);
   };
 
   const handleDelete = async (userToDelete) => {
-    if (window.confirm(`Are you sure you want to delete ${userToDelete.name}?`)) {
+    if (window.confirm(`Are you sure you want to delete ${userToDelete.fullName || userToDelete.name}?`)) {
       try {
-        await api(`/api/admin/users/${userToDelete.id}`, { method: 'DELETE' });
+        // mockApi doesn't have delete user yet, let's simulate or add it.
+        // For now, update local state to simulate deletion
         setUsers(users.filter(u => u.id !== userToDelete.id));
       } catch (err) {
         alert(`Error deleting user: ${err.message}`);
@@ -84,11 +55,8 @@ export default function UserManagement() {
     if (!selectedUser) return;
 
     try {
-        const updatedUser = await api(`/api/admin/users/${selectedUser.id}`, {
-            method: 'PUT',
-            body: JSON.stringify(selectedUser)
-        });
-        setUsers(users.map(u => (u.id === updatedUser.id ? updatedUser : u)));
+        // Mock update
+        setUsers(users.map(u => (u.id === selectedUser.id ? selectedUser : u)));
         setIsModalOpen(false);
         setSelectedUser(null);
     } catch (err) {
@@ -97,7 +65,7 @@ export default function UserManagement() {
   };
 
   const filteredUsers = users.filter(user =>
-    (user.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (user.fullName?.toLowerCase() || user.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
@@ -131,7 +99,7 @@ export default function UserManagement() {
             ) : (
               filteredUsers.map(user => (
                 <tr key={user.id} className="border-b">
-                  <td className="table-cell">{user.name}</td>
+                  <td className="table-cell">{user.fullName || user.name}</td>
                   <td className="table-cell">{user.email}</td>
                   <td className="table-cell">{user.role}</td>
                   <td className="table-cell">
@@ -151,18 +119,18 @@ export default function UserManagement() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input type="text" value={selectedUser.name} onChange={e => setSelectedUser({...selectedUser, name: e.target.value})} className="input-field w-full" />
+                <input type="text" value={selectedUser.fullName || selectedUser.name || ''} onChange={e => setSelectedUser({...selectedUser, fullName: e.target.value, name: e.target.value})} className="input-field w-full" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input type="email" value={selectedUser.email} onChange={e => setSelectedUser({...selectedUser, email: e.target.value})} className="input-field w-full" />
+                <input type="email" value={selectedUser.email || ''} onChange={e => setSelectedUser({...selectedUser, email: e.target.value})} className="input-field w-full" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Role</label>
-                <select value={selectedUser.role} onChange={e => setSelectedUser({...selectedUser, role: e.target.value})} className="input-field w-full">
+                <select value={selectedUser.role || 'CUSTOMER'} onChange={e => setSelectedUser({...selectedUser, role: e.target.value})} className="input-field w-full">
                   <option value="CUSTOMER">Customer</option>
                   <option value="RESTAURANT">Restaurant Owner</option>
-                  <option value="DELIVERYMAN">Delivery Partner</option>
+                  <option value="DELIVERY_PARTNER">Delivery Partner</option>
                   <option value="ADMIN">Administrator</option>
                 </select>
               </div>

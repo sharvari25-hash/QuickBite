@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { MapPin, Users, Clock, Star } from "lucide-react"
-import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps"
 
-
-// I've added latitude and longitude to your cities data for map marker placement.
-// Replace these with the exact coordinates for your locations.
 const cities = [
   {
     id: 1,
@@ -15,7 +11,6 @@ const cities = [
     avgDelivery: "25 min",
     rating: 4.8,
     popular: true,
-    position: { lat: 17.385044, lng: 78.486671 },
   },
   {
     id: 2,
@@ -24,7 +19,6 @@ const cities = [
     avgDelivery: "30 min",
     rating: 4.6,
     popular: true,
-    position: { lat: 12.971599, lng: 77.594566 },
   },
   {
     id: 3,
@@ -33,7 +27,6 @@ const cities = [
     avgDelivery: "28 min",
     rating: 4.7,
     popular: false,
-    position: { lat: 18.52043, lng: 73.856743 },
   },
   {
     id: 4,
@@ -42,7 +35,6 @@ const cities = [
     avgDelivery: "22 min",
     rating: 4.5,
     popular: false,
-    position: { lat: 19.07609, lng: 72.877426 },
   },
   {
     id: 5,
@@ -51,7 +43,6 @@ const cities = [
     avgDelivery: "26 min",
     rating: 4.6,
     popular: false,
-    position: { lat: 13.08268, lng: 80.270721 },
   },
   {
     id: 6,
@@ -60,15 +51,12 @@ const cities = [
     avgDelivery: "24 min",
     rating: 4.7,
     popular: true,
-    position: { lat: 22.719568, lng: 75.857727 },
   },
 ]
 
 export default function CitiesSection() {
   const [isVisible, setIsVisible] = useState(false)
-  // Initialize selectedCity with the first city in the array
   const [selectedCity, setSelectedCity] = useState(cities[0])
-  const [mapCenter, setMapCenter] = useState(cities[0].position)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -87,26 +75,6 @@ export default function CitiesSection() {
       if (element) observer.unobserve(element)
     }
   }, [])
-  
-  // Update map center when a new city is selected
-  useEffect(() => {
-    if (selectedCity) {
-      setMapCenter(selectedCity.position);
-    }
-  }, [selectedCity]);
-
-
-  // It's best practice to store your API key in an environment variable
-  const API_KEY = "AIzaSyDXl-dcbjgme56sS_5EPk53DP27x0oraXU";
-
-  if (!API_KEY) {
-    return (
-      <div className="text-center py-16">
-        <h2 className="text-2xl font-bold text-red-600">Google Maps API Key is missing.</h2>
-        <p className="text-lg text-gray-600">Please add your API key to your environment variables.</p>
-      </div>
-    );
-  }
 
   return (
     <section id="cities" className="bg-white py-16">
@@ -126,13 +94,13 @@ export default function CitiesSection() {
             </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            We're expanding rapidly across the country. Find QuickEats in your
+            We're expanding rapidly across the country. Find QuickBite in your
             city and discover amazing local restaurants.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* Map Container */}
+          {/* Static Map Image Placeholder */}
           <div
             className={`relative transform transition-all duration-1000 delay-300 ${
               isVisible
@@ -142,30 +110,20 @@ export default function CitiesSection() {
           >
             <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 shadow-2xl border border-gray-200">
               <div className="relative w-full h-96 rounded-2xl overflow-hidden bg-gray-200">
-                <APIProvider apiKey={API_KEY}>
-                  <Map
-                    center={mapCenter}
-                    zoom={10}
-                    mapId="YOUR_MAP_ID" // Optional: for Cloud-based map styling
-                    className="w-full h-full"
-                  >
-                    {cities.map((city) => (
-                      <AdvancedMarker
-                        key={city.id}
-                        position={city.position}
-                        onClick={() => setSelectedCity(city)}
-                      >
-                        <MapPin
-                          className={`w-8 h-8 transition-transform duration-300 ease-in-out ${
-                            selectedCity?.id === city.id
-                              ? "text-primary-600 scale-125"
-                              : "text-gray-600"
-                          }`}
-                        />
-                      </AdvancedMarker>
-                    ))}
-                  </Map>
-                </APIProvider>
+                {/* Replaced Google Maps with a Static Image */}
+                <img 
+                  src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1000&auto=format&fit=crop" 
+                  alt="City Map Placeholder" 
+                  className="w-full h-full object-cover opacity-80"
+                />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="bg-white/80 backdrop-blur-md px-6 py-3 rounded-xl shadow-lg border border-white">
+                        <p className="font-bold text-gray-800 flex items-center gap-2">
+                            <MapPin className="text-primary-600" />
+                            {selectedCity.name} Area
+                        </p>
+                    </div>
+                </div>
               </div>
             </div>
           </div>
@@ -224,20 +182,7 @@ export default function CitiesSection() {
                   Order in {selectedCity.name}
                 </button>
               </div>
-            ) : (
-              <div className="text-center py-16">
-                <div className="w-24 h-24 bg-gradient-to-r from-primary-100 to-primary-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <MapPin className="w-12 h-12 text-primary-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-black mb-4">
-                  Select a city on the map
-                </h3>
-                <p className="text-gray-600 max-w-md mx-auto">
-                  Click on any city marker to see detailed information about
-                  restaurants, delivery times, and ratings in that area.
-                </p>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
 

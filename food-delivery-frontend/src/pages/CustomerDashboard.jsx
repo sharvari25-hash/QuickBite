@@ -8,6 +8,7 @@ import Profile from "../components/Profile";
 import CategoryCard from "../components/CategoryCard";
 import RestaurantCard from "../components/RestaurantCard";
 import { useAuth } from "../contexts/AuthContext";
+import { mockApi } from "../services/mockApi";
 import {
   Search,
   ShoppingCart,
@@ -20,254 +21,11 @@ import {
   Plus,
   Loader2,
 } from "lucide-react";
-import axios from "axios";
 
-
-// --- API HELPER HOOK using Axios ---
-const useApi = (authToken) => {
-  const api = useMemo(() => {
-    const instance = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
-    });
-    instance.interceptors.request.use(
-      (config) => {
-        if (authToken) {
-          config.headers["Authorization"] = `Bearer ${authToken}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-    return instance;
-  }, [authToken]);
-  return api;
-};
-
-// Mock data with unique IDs
+// Mock data with unique IDs (keeping these for display if needed, but primary data comes from mockApi)
 const mockRestaurants = [
-  {
-    id: 1,
-    name: "Spicy Biryani House",
-    image: "https://source.unsplash.com/featured/?restaurant,biryani",
-    rating: 4.5,
-    deliveryTime: 30,
-    category: "Biryani, Mughlai",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 2,
-    name: "South Delight",
-    image: "https://source.unsplash.com/featured/?restaurant,dosa",
-    rating: 4.2,
-    deliveryTime: 25,
-    category: "South Indian",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 3,
-    name: "Punjabi Zaika",
-    image: "https://source.unsplash.com/featured/?restaurant,punjabi",
-    rating: 4.6,
-    deliveryTime: 35,
-    category: "North Indian",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 4,
-    name: "Tandoori Flames",
-    image: "https://source.unsplash.com/featured/?restaurant,tandoori",
-    rating: 4.3,
-    deliveryTime: 28,
-    category: "Grill, Tandoori",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 5,
-    name: "The Veggie Hub",
-    image: "https://source.unsplash.com/featured/?restaurant,vegetarian",
-    rating: 4.1,
-    deliveryTime: 22,
-    category: "Vegetarian",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 6,
-    name: "Downtown Pizzeria",
-    image: "https://source.unsplash.com/featured/?restaurant,pizza",
-    rating: 4.8,
-    deliveryTime: 28,
-    category: "Italian, Pizza",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 7,
-    name: "Noodle Kingdom",
-    image: "https://source.unsplash.com/featured/?restaurant,noodles",
-    rating: 4.3,
-    deliveryTime: 25,
-    category: "Chinese, Asian",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 8,
-    name: "The Kebab Stop",
-    image: "https://source.unsplash.com/featured/?restaurant,kebab",
-    rating: 4.7,
-    deliveryTime: 35,
-    category: "Middle Eastern, Grill",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 9,
-    name: "Sizzler's Paradise",
-    image: "https://source.unsplash.com/featured/?restaurant,sizzler",
-    rating: 4.5,
-    deliveryTime: 40,
-    category: "Continental, Steakhouse",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
-  {
-    id: 10,
-    name: "Sweet Escapes",
-    image: "https://source.unsplash.com/featured/?restaurant,dessert",
-    rating: 4.9,
-    deliveryTime: 20,
-    category: "Desserts, Bakery",
-    latitude: 23.767298 + (Math.random() - 0.5) * 0.05,
-    longitude: 80.366029 + (Math.random() - 0.5) * 0.05,
-  },
+  // ... (previous static data if you want to keep it as fallback)
 ];
-const topRestaurants = [
-  {
-    id: 1,
-    name: "Spicy Biryani House",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.5,
-    deliveryTime: 30,
-    category: "Biryani, Mughlai",
-    deliveryFee: "Free",
-    promoted: true,
-    discount: "50% OFF",
-  },
-  {
-    id: 2,
-    name: "South Delight",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.2,
-    deliveryTime: 25,
-    category: "South Indian",
-    deliveryFee: "₹20",
-    promoted: true,
-    discount: "40% OFF",
-  },
-  {
-    id: 3,
-    name: "Punjabi Zaika",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.6,
-    deliveryTime: 35,
-    category: "North Indian",
-    deliveryFee: "Free",
-    promoted: true,
-    discount: "30% OFF",
-  },
-  {
-    id: 4,
-    name: "Pizza Corner",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.3,
-    deliveryTime: 28,
-    category: "Italian, Pizza",
-    deliveryFee: "₹15",
-    promoted: true,
-    discount: "Buy 1 Get 1",
-  },
-  {
-    id: 5,
-    name: "Burger Junction",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.1,
-    deliveryTime: 22,
-    category: "Fast Food, Burgers",
-    deliveryFee: "Free",
-    promoted: true,
-    discount: "25% OFF",
-  },
-];
-
-// FIX: Ensure unique IDs for mock data to avoid "Encountered two children with the same key" warnings.
-const mockMenuItems = [
-  {
-    id: 1,
-    name: "Chicken Biryani",
-    image: "https://source.unsplash.com/featured/?biryani",
-    price: 199,
-  },
-  {
-    id: 2,
-    name: "Paneer Butter Masala",
-    image: "https://source.unsplash.com/featured/?paneer",
-    price: 179,
-  },
-  {
-    id: 3,
-    name: "Masala Dosa",
-    image: "https://source.unsplash.com/featured/?dosa",
-    price: 99,
-  },
-  {
-    id: 4,
-    name: "Chicken Tikka",
-    image: "https://source.unsplash.com/featured/?chicken",
-    price: 249,
-  },
-  {
-    id: 5,
-    name: "Veg Thali",
-    image: "https://source.unsplash.com/featured/?thali",
-    price: 149,
-  },
-  {
-    id: 6, // FIX: Changed ID from 1 to 6
-    name: "Chicken Biryani",
-    image: "https://source.unsplash.com/featured/?biryani",
-    price: 199,
-  },
-  {
-    id: 7, // FIX: Changed ID from 2 to 7
-    name: "Paneer Butter Masala",
-    image: "https://source.unsplash.com/featured/?paneer",
-    price: 179,
-  },
-  {
-    id: 8, // FIX: Changed ID from 3 to 8
-    name: "Masala Dosa",
-    image: "https://source.unsplash.com/featured/?dosa",
-    price: 99,
-  },
-  {
-    id: 9, // FIX: Changed ID from 4 to 9
-    name: "Chicken Tikka",
-    image: "https://source.unsplash.com/featured/?chicken",
-    price: 249,
-  },
-  {
-    id: 10, // FIX: Changed ID from 5 to 10
-    name: "Veg Thali",
-    image: "https://source.unsplash.com/featured/?thali",
-    price: 149,
-  },
-];
-
 
 // --- STATIC DATA ---
 const categories = [
@@ -300,14 +58,13 @@ const categories = [
 // --- MAIN COMPONENT ---
 export default function CustomerDashboard() {
   const { user, logout, authToken } = useAuth();
-  const api = useApi(authToken);
 
   // Data state
   const [activeTab, setActiveTab] = useState("browse");
   const [allRestaurants, setAllRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [selectedRestaurantMenu, setSelectedRestaurantMenu] = useState([]);
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(null); // Initialize as null or object, not array
   const [orders, setOrders] = useState([]);
 
   // UI/Loading state
@@ -324,37 +81,36 @@ export default function CustomerDashboard() {
     setIsLoading(true);
     setError("");
     try {
-      const [restaurantsRes, cartRes, ordersRes] = await Promise.all([
-        api.get("/api/restaurants"),
-        api.get("/api/customer/cart"),
-        api.get("/api/customer/orders"),
-      ]);
-      setAllRestaurants(restaurantsRes.data);
-      setCart(cartRes.data.items || []);
-      setOrders(ordersRes.data);
+      // Use mockApi for fetching
+      const restaurants = await mockApi.getRestaurants();
+      const cartData = await mockApi.getCart();
+      const ordersData = await mockApi.getOrders('CUSTOMER', user?.id);
+
+      setAllRestaurants(restaurants);
+      setCart(cartData);
+      setOrders(ordersData);
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(err.message || "Failed to load dashboard data");
     } finally {
       setIsLoading(false);
     }
-  }, [api]);
+  }, [user]);
 
   useEffect(() => {
-    if (authToken) {
+    if (user) {
       fetchAllData();
     }
-  }, [authToken, fetchAllData]);
+  }, [user, fetchAllData]);
 
   const handleRestaurantClick = async (restaurant) => {
     setSelectedRestaurant(restaurant);
     setIsMenuLoading(true);
     try {
-      const response = await api.get(`/api/restaurants/${restaurant.id}/menu`);
-      setSelectedRestaurantMenu(response.data);
+      // Fetch specific restaurant details which includes menu in our mock setup
+      const restaurantDetail = await mockApi.getRestaurantById(restaurant.id);
+      setSelectedRestaurantMenu(restaurantDetail?.menu || []);
     } catch (err) {
-      alert(
-        `Error fetching menu: ${err.response?.data?.message || err.message}`
-      );
+      alert(`Error fetching menu: ${err.message}`);
       setSelectedRestaurant(null);
     } finally {
       setIsMenuLoading(false);
@@ -364,40 +120,45 @@ export default function CustomerDashboard() {
   // --- CART & ORDER HANDLERS ---
    const addToCart = async (menuItem) => {
     try {
-      const response = await api.post(`/api/customer/cart/items?menuItemId=${menuItem.id}&quantity=1`);
-      setCart(response.data); // ★★★ FIX: Update with the new cart object from the API ★★★
+      const updatedCart = await mockApi.addToCart(menuItem, 1);
+      setCart(updatedCart);
     } catch (err) {
-      alert(`Error adding to cart: ${err.response?.data?.message || err.message}`);
+      alert(`Error adding to cart: ${err.message}`);
     }
   };
 
   const removeFromCart = async (cartItemId) => {
     try {
-      // The URL for DELETE should be clean and only contain the ID in the path.
-      // It must not have any query parameters like "?quantity=1".
-      const response = await api.delete(`/api/customer/cart/items/${cartItem.id}`);
-      setCart(response.data); // Update with the new cart object from the API
+      const updatedCart = await mockApi.removeFromCart(cartItemId);
+      setCart(updatedCart); 
     } catch (err) {
-      // This is where your error is being caught
-      alert(`Error removing from cart: ${err.response?.data?.message || err.message}`);
+      alert(`Error removing from cart: ${err.message}`);
     }
   };
 
   const handleOrderPlacement = async () => {
     try {
-      const response = await api.post("/api/customer/orders");
-      setOrders((prev) => [response.data, ...prev]);
-      // ★★★ FIX: Clear the cart by fetching the new, empty cart from the server ★★★
-      const newCart = await api.get("/api/customer/cart");
-      setCart(newCart.data);
-      return true; // Signal success to the Cart component
+      // Create the order
+      const newOrder = await mockApi.createOrder({
+        customerId: user.id,
+        items: cart.items,
+        totalPrice: cart.items.reduce((acc, item) => acc + (item.menuItem.price * item.quantity), 0),
+        restaurantId: cart.items[0]?.menuItem?.restaurantId || 1 // Simple assumption
+      });
+      
+      setOrders((prev) => [newOrder, ...prev]);
+      
+      // Clear cart
+      const emptyCart = await mockApi.clearCart();
+      setCart(emptyCart);
+      
+      return true; 
     } catch (err) {
-      alert(`Error placing order: ${err.response?.data?.message || err.message}`);
-      return false; // Signal failure
+      alert(`Error placing order: ${err.message}`);
+      return false; 
     }
   };
 
-  // ★★★ FIX: Calculate total items safely from the cart object ★★★
   const getTotalItems = () =>
     cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
 
@@ -407,7 +168,7 @@ export default function CustomerDashboard() {
       .filter(
         (r) =>
           (r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            r.categories.toLowerCase().includes(searchQuery.toLowerCase())) &&
+            r.categories?.toLowerCase().includes(searchQuery.toLowerCase())) &&
           (r.rating || 0) >= filters.minRating
       )
       .sort((a, b) => {
@@ -469,7 +230,7 @@ export default function CustomerDashboard() {
               <Menu />
             </button>
             <h1 className="text-xl sm:text-2xl font-bold">
-              Quick<span className="text-primary-500">Eats</span>
+              Quick<span className="text-primary-500">Bite</span>
             </h1>
             <div className="flex items-center space-x-4">
               <button
@@ -669,7 +430,7 @@ export default function CustomerDashboard() {
 
            {activeTab === "cart" && (
             <Cart
-              cart={cart} // ★★★ FIX: Pass the full cart object down ★★★
+              cart={cart} 
               onAddToCart={addToCart}
               onRemoveFromCart={removeFromCart}
               onBrowse={() => setActiveTab("browse")}

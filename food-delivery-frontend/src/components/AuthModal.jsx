@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Mail, Lock, User, Eye, EyeOff, Phone } from "lucide-react";
+import { X, Mail, Lock, User, Eye, EyeOff, Phone, KeyRound } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { mockApi } from "../services/mockApi";
 
 export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Unified state to handle all form fields for different roles
+  // Unified state
   const [formData, setFormData] = useState({
-    // Common user fields
     name: "",
     email: "",
     password: "",
@@ -19,22 +19,16 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
     phone: "",
     avatarUrl: "",
     role: "customer",
-
-    // Restaurant specific fields
     businessName: "",
     businessEmail: "",
     businessPhone: "",
     categories: "",
     imageUrl: "",
-    
-    // Common address fields
     addressLine1: "",
     city: "",
     state: "",
     postalCode: "",
     country: "",
-    
-    // Delivery Partner specific fields
     licenseNumber: "",
     vehicleType: "MOTORCYCLE",
     vehicleModel: "",
@@ -47,30 +41,8 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Helper function for making API POST requests
-  const apiPost = async (url, body) => {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Request failed with status ${response.status}`
-      );
-    }
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      return response.json();
-    }
-    return null;
-  };
-
-  // Redirect user to the appropriate dashboard based on their role
   const redirectToDashboard = (userRole) => {
     const role = userRole.toUpperCase();
-    console.log("Redirecting to dashboard for role:", role);
     switch (role) {
       case "CUSTOMER":
         navigate("/customer-dashboard");
@@ -86,22 +58,24 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
         navigate("/admin-dashboard");
         break;
       default:
-        navigate("/"); // Fallback to home page
+        navigate("/"); 
     }
   };
 
-  // Handle form submission for both sign-in and sign-up
+  const handleDemoLogin = (email, password) => {
+      setFormData(prev => ({ ...prev, email, password }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({});
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
     try {
       if (mode === "signin") {
         const userData = await login(formData.email, formData.password);
         onClose();
-        redirectToDashboard(userData.role); // Redirect after login
+        redirectToDashboard(userData.role); 
       } else {
         if (formData.password !== formData.confirmPassword) {
           setErrors({ confirmPassword: "Passwords do not match." });
@@ -109,101 +83,32 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
         }
 
         const { role } = formData;
-        let endpoint = "";
-        let payload = {};
+        // Prepare payload for mockApi.register
+        // We'll just pass the formData directly and let mockApi handle basic storage
+        // In a real app we'd map this to the specific entity structures
+        
+        const payload = {
+            ...formData,
+            role: role.toUpperCase() // Ensure role is upper case for consistency
+        };
 
-        // Construct payload based on the selected role
-        switch (role) {
-          case "customer":
-            endpoint = `${API_BASE_URL}/api/auth/register/customer`;
-            payload = {
-              name: formData.name,
-              email: formData.email,
-              phone: formData.phone,
-              password: formData.password,
-              avatarUrl: formData.avatarUrl,
-              address: {
-                line1: formData.addressLine1,
-                city: formData.city,
-                state: formData.state,
-                postalCode: formData.postalCode,
-                country: formData.country,
-              },
-            };
-            break;
-
-          case "restaurant":
-            endpoint = `${API_BASE_URL}/api/auth/register/restaurant`;
-            payload = {
-              owner: {
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                password: formData.password,
-                avatarUrl: formData.avatarUrl,
-              },
-              restaurant: {
-                name: formData.businessName,
-                email: formData.businessEmail,
-                phone: formData.businessPhone,
-                categories: formData.categories,
-                imageUrl: formData.imageUrl,
-                address: {
-                  line1: formData.addressLine1,
-                  city: formData.city,
-                  state: formData.state,
-                  postalCode: formData.postalCode,
-                  country: formData.country,
-                },
-              },
-            };
-            break;
-
-          case "delivery":
-            endpoint = `${API_BASE_URL}/api/auth/register/delivery-partner`;
-            payload = {
-              user: {
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                password: formData.password,
-                avatarUrl: formData.avatarUrl,
-              },
-              profile: {
-                licenseNumber: formData.licenseNumber,
-                vehicleType: formData.vehicleType.toUpperCase(),
-                vehicleModel: formData.vehicleModel,
-                vehicleRegistrationNumber: formData.vehicleRegistrationNumber,
-                idProofUrl: formData.idProofUrl,
-                zone: formData.zone,
-              },
-            };
-            break;
-
-          default:
-            throw new Error("Invalid role selected.");
-        }
-
-        await apiPost(endpoint, payload);
+        await mockApi.register(payload);
         alert("Registration successful! Please sign in to continue.");
-        onSwitchMode(); // Switch to sign-in mode after successful registration
+        onSwitchMode(); 
       }
     } catch (err) {
       setErrors({ general: err.message || "An error occurred. Please try again." });
-      console.error("Authentication process error:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle changes in form inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-    // Clear specific field error on change
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -211,7 +116,6 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
 
   if (!isOpen) return null;
 
-  // JSX for Restaurant specific fields
   const renderRestaurantFields = () => (
     <>
       <hr className="my-4" />
@@ -237,13 +141,11 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
           <input type="url" name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="input-field" />
         </div>
-        {/* Common Address Fields */}
         {renderAddressFields()}
       </div>
     </>
   );
 
-  // JSX for Delivery Partner specific fields
   const renderDeliveryFields = () => (
     <>
       <hr className="my-4" />
@@ -282,7 +184,6 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
     </>
   );
   
-  // Reusable JSX for address fields
   const renderAddressFields = () => (
     <>
       <div className="md:col-span-2">
@@ -308,7 +209,6 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
     </>
   );
 
-  // JSX for Customer specific fields (just the address)
   const renderCustomerAddressFields = () => (
     <>
       <hr className="my-4" />
@@ -331,6 +231,49 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
               <X className="h-5 w-5 text-gray-500" />
             </button>
           </div>
+
+          {/* Demo Account Buttons */}
+          {mode === "signin" && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center gap-2">
+                    <KeyRound className="h-4 w-4" /> Demo Accounts
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                    <button 
+                        type="button"
+                        onClick={() => handleDemoLogin('customer@quickbite.com', 'password')}
+                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
+                    >
+                        <span className="block font-medium text-gray-900">Customer</span>
+                        <span className="block text-gray-500 text-[10px]">customer@quickbite.com</span>
+                    </button>
+                    <button 
+                         type="button"
+                        onClick={() => handleDemoLogin('restaurant@quickbite.com', 'password')}
+                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
+                    >
+                        <span className="block font-medium text-gray-900">Restaurant</span>
+                        <span className="block text-gray-500 text-[10px]">restaurant@quickbite.com</span>
+                    </button>
+                    <button 
+                         type="button"
+                        onClick={() => handleDemoLogin('delivery@quickbite.com', 'password')}
+                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
+                    >
+                        <span className="block font-medium text-gray-900">Delivery</span>
+                        <span className="block text-gray-500 text-[10px]">delivery@quickbite.com</span>
+                    </button>
+                    <button 
+                         type="button"
+                        onClick={() => handleDemoLogin('admin@quickbite.com', 'password')}
+                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
+                    >
+                        <span className="block font-medium text-gray-900">Admin</span>
+                        <span className="block text-gray-500 text-[10px]">admin@quickbite.com</span>
+                    </button>
+                </div>
+            </div>
+          )}
 
           {mode === "signup" && (
             <div className="mb-6">
@@ -401,7 +344,6 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
               </div>
             )}
 
-            {/* Conditionally render role-specific fields */}
             {mode === "signup" && formData.role === "restaurant" && renderRestaurantFields()}
             {mode === "signup" && formData.role === "delivery" && renderDeliveryFields()}
             {mode === "signup" && formData.role === "customer" && renderCustomerAddressFields()}

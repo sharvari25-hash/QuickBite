@@ -3,36 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { KeyRound, Bell, Palette, Save, Loader2 } from "lucide-react";
-
-// Helper hook for making authenticated API calls (reusable)
-const useApi = (authToken) => {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  
-  const apiFetch = useCallback(async (endpoint, options = {}) => {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        ...options.headers,
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed: ${response.status}`);
-    }
-    if (response.status !== 204) { // 204 No Content has no body
-        return response.json();
-    }
-    return null;
-  }, [authToken]);
-
-  return apiFetch;
-};
+import { mockApi } from "../services/mockApi";
 
 export default function SystemSettings() {
-  const { user, authToken } = useAuth();
-  const api = useApi(authToken);
+  const { user } = useAuth();
 
   const [settings, setSettings] = useState({
     adminEmail: user?.email || '',
@@ -52,32 +26,24 @@ export default function SystemSettings() {
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await api('/api/admin/settings');
-      setSettings(prev => ({
-          ...prev,
-          emailOnNewUser: data.emailOnNewUser === 'true',
-          emailOnNewRestaurant: data.emailOnNewRestaurant === 'true',
-          theme: data.theme || 'Light',
-      }));
+      // Mock loading default settings
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // In a real app, this would come from an API
+      // Since it's a frontend-only mock, we can just use default state or localStorage if we implemented it
     } catch (err) {
       setError(`Failed to load settings: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [api]);
+  }, []);
 
   useEffect(() => {
-    if (authToken) {
-      fetchSettings();
-    }
-  }, [authToken, fetchSettings]);
-
-  
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setSettings(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    // Clear feedback on change
     setSuccess("");
     setError("");
   };
@@ -97,11 +63,7 @@ export default function SystemSettings() {
       setSuccess("");
       setError("");
       try {
-          const payload = {
-              currentPassword: settings.currentPassword,
-              newPassword: settings.newPassword
-          };
-          await api('/api/users/me/password', { method: 'PUT', body: JSON.stringify(payload) });
+          await new Promise(resolve => setTimeout(resolve, 1000));
           setSuccess("Password updated successfully!");
           setSettings(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: ''}));
       } catch (err) {
@@ -116,16 +78,7 @@ export default function SystemSettings() {
     setSuccess("");
     setError("");
     try {
-        let payload = {};
-        if (section === 'notifications') {
-            payload = {
-                emailOnNewUser: String(settings.emailOnNewUser),
-                emailOnNewRestaurant: String(settings.emailOnNewRestaurant),
-            };
-        } else if (section === 'appearance') {
-            payload = { theme: settings.theme };
-        }
-        await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(payload) });
+        await new Promise(resolve => setTimeout(resolve, 1000));
         setSuccess(`${section.charAt(0).toUpperCase() + section.slice(1)} settings saved!`);
     } catch (err) {
         setError(`Failed to save settings: ${err.message}`);
