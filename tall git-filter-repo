@@ -1,0 +1,9 @@
+[35mfood-delivery-frontend/package-lock.json[m[36m:[m        "@[1;31mstripe[m/react-[1;31mstripe[m-js": "^3.9.1",
+[35mfood-delivery-frontend/package-lock.json[m[36m:[m        "@[1;31mstripe[m/[1;31mstripe[m-js": "^7.8.0",
+[35mfood-delivery-frontend/package-lock.json[m[36m:[m    "node_modules/@[1;31mstripe[m/react-[1;31mstripe[m-js": {
+[35mfood-delivery-frontend/package-lock.json[m[36m:[m      "resolved": "https://registry.npmjs.org/@[1;31mstripe[m/react-[1;31mstripe[m-js/-/react-[1;31mstripe[m-js-3.9.1.tgz",
+[35mfood-delivery-frontend/package-lock.json[m[36m:[m        "@[1;31mstripe[m/[1;31mstripe[m-js": ">=1.44.1 <8.0.0",
+[35mfood-delivery-frontend/package-lock.json[m[36m:[m    "node_modules/@[1;31mstripe[m/[1;31mstripe[m-js": {
+[35mfood-delivery-frontend/package-lock.json[m[36m:[m      "resolved": "https://registry.npmjs.org/@[1;31mstripe[m/[1;31mstripe[m-js/-/[1;31mstripe[m-js-7.8.0.tgz",
+[35mfood-delivery-frontend/package.json[m[36m:[m    "@[1;31mstripe[m/react-[1;31mstripe[m-js": "^3.9.1",
+[35mfood-delivery-frontend/package.json[m[36m:[m    "@[1;31mstripe[m/[1;31mstripe[m-js": "^7.8.0",
