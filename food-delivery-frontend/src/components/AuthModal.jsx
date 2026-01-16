@@ -7,7 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { mockApi } from "../services/mockApi";
 
 export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   // Unified state
@@ -42,17 +42,19 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
   const [errors, setErrors] = useState({});
 
   const redirectToDashboard = (userRole) => {
-    const role = userRole.toUpperCase();
+    // Handle both ROLE_... and plain ... formats
+    const role = userRole ? userRole.toUpperCase().replace('ROLE_', '') : 'CUSTOMER';
+    
     switch (role) {
       case "CUSTOMER":
         navigate("/customer-dashboard");
         break;
       case "RESTAURANT":
-        navigate("/restaurant-management");
+        navigate("/restaurant-dashboard"); // Updated path
         break;
       case "DELIVERY_PARTNER":
       case "DELIVERY":
-        navigate("/delivery-partner-dashboard");
+        navigate("/delivery-dashboard"); // Updated path
         break;
       case "ADMIN":
         navigate("/admin-dashboard");
@@ -75,24 +77,20 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
       if (mode === "signin") {
         const userData = await login(formData.email, formData.password);
         onClose();
-        redirectToDashboard(userData.role); 
+        // AuthContext handles navigation, but we can double check or rely on it.
+        // If AuthContext navigates, this might be redundant but harmless.
+        if (userData && userData.role) {
+             redirectToDashboard(userData.role);
+        }
       } else {
         if (formData.password !== formData.confirmPassword) {
           setErrors({ confirmPassword: "Passwords do not match." });
           throw new Error("Passwords do not match.");
         }
 
-        const { role } = formData;
-        // Prepare payload for mockApi.register
-        // We'll just pass the formData directly and let mockApi handle basic storage
-        // In a real app we'd map this to the specific entity structures
+        // Use context register function
+        await register(formData);
         
-        const payload = {
-            ...formData,
-            role: role.toUpperCase() // Ensure role is upper case for consistency
-        };
-
-        await mockApi.register(payload);
         alert("Registration successful! Please sign in to continue.");
         onSwitchMode(); 
       }

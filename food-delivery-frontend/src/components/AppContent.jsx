@@ -24,8 +24,8 @@ export default function AppContent() {
   }
 
   // --- THE FIX ---
-  // Get the role and convert to lowercase for a reliable check
-  const userRole = user.role ? user.role.toLowerCase() : '';
+  // Get the role and convert to lowercase for a reliable check, stripping 'role_' if present
+  const userRole = user.role ? user.role.toLowerCase().replace('role_', '') : '';
 
   // Role-based dashboard rendering
   switch (userRole) {

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { mockApi } from "../services/mockApi";
+import { authService } from "../services/authService";
 
 // Create the context
 const AuthContext = createContext(null);
@@ -40,27 +40,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Use mockApi instead of fetch
-      const data = await mockApi.login(email, password);
+      const data = await authService.login(email, password);
 
       if (data && data.token) {
         setUser(data);
 
-        // Navigation logic
-        if (data.role === 'CUSTOMER') {
-          navigate('/');
-        } else if (data.role === 'RESTAURANT') {
-          navigate('/dashboard'); 
-        } else if (data.role === 'ADMIN') {
+        // Navigation logic based on role from backend (formatted as ROLE_...)
+        // Normalize role for checking
+        const normalizedRole = role.replace('ROLE_', '');
+        
+        if (normalizedRole === 'CUSTOMER') {
+          navigate('/customer-dashboard');
+        } else if (normalizedRole === 'RESTAURANT') {
+          navigate('/restaurant-dashboard'); 
+        } else if (normalizedRole === 'ADMIN') {
             navigate('/admin-dashboard');
-        } else if (data.role === 'DELIVERY_PARTNER') {
-            navigate('/delivery-partner-dashboard');
+        } else if (normalizedRole === 'DELIVERY') {
+            navigate('/delivery-dashboard');
         } else {
           navigate('/'); 
         }
         return data;
-      } else {
-        throw new Error('Login response did not include an authentication token.');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -68,15 +68,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (userData) => {
+      try {
+          const response = await authService.register(userData);
+          return response;
+      } catch (error) {
+          console.error('Registration error:', error);
+          throw error;
+      }
+  };
+
   const logout = () => {
     setUser(null); 
-    navigate('/login'); 
+    navigate('/'); 
   };
   
   const value = {
     user,
     isLoading,
     login,
+    register,
     logout,
     authToken: user?.token,
     isAuthenticated: !!user?.token,
