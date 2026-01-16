@@ -1,9 +1,9 @@
 import { allRestaurants } from '../components/mockData';
 
-const USERS_KEY = 'quickbite_users_v2';
-const RESTAURANTS_KEY = 'quickbite_restaurants_v2';
-const ORDERS_KEY = 'quickbite_orders_v2';
-const CART_KEY = 'quickbite_cart_v2';
+const USERS_KEY = 'quickbite_users_v3';
+const RESTAURANTS_KEY = 'quickbite_restaurants_v3';
+const ORDERS_KEY = 'quickbite_orders_v3';
+const CART_KEY = 'quickbite_cart_v3';
 
 // Initial Demo Users
 const initialUsers = [
