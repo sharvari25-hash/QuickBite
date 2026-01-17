@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { mockApi } from "../services/mockApi"
+import { api } from "../services/api"
 import { 
   Store, Package, DollarSign, Menu, LogOut, Edit, Trash2, XCircle, PlusCircle, Loader2, ChevronDown, ChevronUp 
 } from "lucide-react"
@@ -36,7 +37,7 @@ const MenuItemForm = ({ item, onSave, onCancel, formError, isSaving }) => {
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Category</label><input type="text" name="category" value={formData.category || ''} onChange={handleChange} className="w-full p-2 border rounded-lg" placeholder="e.g., Appetizer, Main Course" required /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Description</label><input type="text" name="description" value={formData.description || ''} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Price</label><input type="number" name="price" step="0.01" value={formData.price || ''} onChange={handleChange} className="w-full p-2 border rounded-lg" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label><input type="text" name="imageUrl" value={formData.imageUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label><input type="text" name="image" value={formData.image || ''} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
             <div className="flex items-center"><input type="checkbox" name="available" checked={!!formData.available} onChange={handleChange} className="h-4 w-4 text-green-600 border-gray-300 rounded" /><label className="ml-2 block text-sm text-gray-900">Available for ordering</label></div>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">Cancel</button>
@@ -90,7 +91,7 @@ export default function RestaurantDashboard() {
                 // Mock API calls
                 // Assuming user has restaurantId
                 const restaurantId = user.restaurantId || 1; 
-                const restaurantData = await mockApi.getRestaurantById(restaurantId);
+                const restaurantData = await api.getRestaurantById(restaurantId);
                 const ordersData = await mockApi.getOrders('RESTAURANT', restaurantId);
                 
                 setRestaurant(restaurantData);
@@ -177,7 +178,7 @@ export default function RestaurantDashboard() {
 
     const openAddMenuItemModal = () => {
         setFormError(null);
-        setEditingMenuItem({ name: '', description: '', price: '', category: '', available: true, imageUrl: '' });
+        setEditingMenuItem({ name: '', description: '', price: '', category: '', available: true, image: '' });
         setIsMenuModalOpen(true);
     };
 
@@ -258,7 +259,7 @@ export default function RestaurantDashboard() {
                                 {menuItems.map((item) => (
                                     <div key={item.id} className="border border-gray-200 rounded-lg p-4 flex flex-col justify-between">
                                         <div>
-                                            <img src={item.imageUrl || "https://via.placeholder.com/150"} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-3"/>
+                                            <img src={item.image || "https://via.placeholder.com/150"} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-3"/>
                                             <div className="flex justify-between items-start mb-2">
                                                 <div><h3 className="font-semibold">{item.name}</h3><p className="text-gray-600 text-sm">{item.description}</p></div>
                                                 <p className="text-green-600 font-bold">₹{(item.price || 0).toFixed(2)}</p>

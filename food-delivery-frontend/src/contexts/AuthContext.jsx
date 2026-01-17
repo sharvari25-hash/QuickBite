@@ -44,22 +44,6 @@ export const AuthProvider = ({ children }) => {
 
       if (data && data.token) {
         setUser(data);
-
-        // Navigation logic based on role from backend (formatted as ROLE_...)
-        // Normalize role for checking
-        const normalizedRole = role.replace('ROLE_', '');
-        
-        if (normalizedRole === 'CUSTOMER') {
-          navigate('/customer-dashboard');
-        } else if (normalizedRole === 'RESTAURANT') {
-          navigate('/restaurant-dashboard'); 
-        } else if (normalizedRole === 'ADMIN') {
-            navigate('/admin-dashboard');
-        } else if (normalizedRole === 'DELIVERY') {
-            navigate('/delivery-dashboard');
-        } else {
-          navigate('/'); 
-        }
         return data;
       }
     } catch (error) {
@@ -82,6 +66,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null); 
     navigate('/'); 
   };
+
+  const updateUser = (userData) => {
+    setUser(prev => ({ ...prev, ...userData }));
+  };
   
   const value = {
     user,
@@ -89,6 +77,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUser,
     authToken: user?.token,
     isAuthenticated: !!user?.token,
   };

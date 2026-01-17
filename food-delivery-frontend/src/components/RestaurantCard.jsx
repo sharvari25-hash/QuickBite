@@ -1,8 +1,17 @@
 "use client"
 
-import { Star, Clock, Truck } from "lucide-react"
+import { Star, Clock, Truck, Heart } from "lucide-react"
+import { useWishlist } from "../contexts/WishlistContext"
 
 const RestaurantCard = ({ restaurant, onClick, isTopRestaurant = false }) => {
+  const { isInWishlist, toggleWishlist } = useWishlist()
+  const isWishlisted = isInWishlist(restaurant.id)
+
+  const handleWishlistClick = (e) => {
+    e.stopPropagation()
+    toggleWishlist(restaurant)
+  }
+
   return (
     <div
       className={`bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden ${
@@ -15,6 +24,17 @@ const RestaurantCard = ({ restaurant, onClick, isTopRestaurant = false }) => {
           {restaurant.discount}
         </div>
       )}
+
+      <button
+        onClick={handleWishlistClick}
+        className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors z-20 group"
+      >
+        <Heart
+          className={`h-5 w-5 transition-colors ${
+            isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600 group-hover:text-red-500"
+          }`}
+        />
+      </button>
 
       <div className="relative">
         <img src={restaurant.image || "/placeholder.svg"} alt={restaurant.name} className="w-full h-48 object-cover" />

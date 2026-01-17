@@ -1,134 +1,225 @@
-// components/Profile.js
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { User, Mail, Smartphone, Camera, KeyRound, UploadCloud } from "lucide-react";
+import { userService } from "../services/userService";
+import { User, Mail, Phone, Lock, Save, Camera, Loader2, MapPin } from "lucide-react";
 
 export default function Profile() {
-  const { user } = useAuth(); // Destructure what's needed, assuming updateUser/updatePassword exist
+  const { user: authUser, updateUser } = useAuth(); // Get authenticated user basic info
+  
+  const [profile, setProfile] = useState({
+    fullName: "",
+    email: "",
+    mobile: "",
+    avatarUrl: "",
+    address: "",
+  });
 
-  // State for personal information
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
-  const [mobile, setMobile] = useState(user.mobile || "");
-  const [profilePicture, setProfilePicture] = useState(null);
-  const [preview, setPreview] = useState(user.avatar || `https://i.pravatar.cc/150?u=${user.name}`);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
 
-  // State for password change
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  const handleProfileUpdate = (e) => {
-    e.preventDefault();
-    // In a real app, you would handle file uploads and update the user context/backend
-    console.log("Updating profile with:", { name, email, mobile, profilePicture });
-    // Example: await updateUser({ name, email, mobile, avatar: profilePicture });
-    alert("Profile updated successfully! (Demo)");
-  };
-
-  const handlePasswordChange = (e) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      alert("New passwords do not match.");
-      return;
+  // Fetch real profile data
+  useEffect(() => {
+    if (authUser?.id) {
+      userService.getProfile(authUser.id)
+        .then((data) => {
+          setProfile({
+            fullName: data.fullName || "",
+            email: data.email || "",
+            mobile: data.mobile || "",
+            avatarUrl: data.avatarUrl || "",
+            address: data.address || "",
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          setMessage({ type: "error", text: "Failed to load profile data." });
+        })
+        .finally(() => setIsLoading(false));
     }
-    // In a real app, call your auth context's updatePassword function
-    console.log("Changing password...");
-    // Example: await updatePassword(currentPassword, newPassword);
-    alert("Password changed successfully! (Demo)");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+  }, [authUser]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePictureChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setProfilePicture(file);
-      setPreview(URL.createObjectURL(file));
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const updatedUser = await userService.updateProfile(authUser.id, profile);
+      setProfile({
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        mobile: updatedUser.mobile,
+        avatarUrl: updatedUser.avatarUrl,
+        address: updatedUser.address,
+      });
+      
+      // Update global auth context so header/sidebar reflect changes immediately
+      updateUser({
+        fullName: updatedUser.fullName,
+        mobile: updatedUser.mobile,
+        avatarUrl: updatedUser.avatarUrl,
+        address: updatedUser.address,
+        name: updatedUser.fullName // Some components might use 'name' instead of 'fullName'
+      });
+
+      setMessage({ type: "success", text: "Profile updated successfully!" });
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: "Failed to update profile." });
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin h-8 w-8 text-primary-500" /></div>;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* --- Profile Information Section --- */}
-      <div className="lg:col-span-2">
-        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800 mb-6">Edit Profile</h2>
-          <form onSubmit={handleProfileUpdate} className="space-y-6">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative group">
-                <img src={preview} alt="Profile" className="w-32 h-32 rounded-full object-cover shadow-md" />
-                <label
-                  htmlFor="profile-picture-upload"
-                  className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center text-white rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                >
-                  <UploadCloud className="h-8 w-8" />
-                  <span className="text-sm mt-1">Change Photo</span>
-                </label>
-                <input id="profile-picture-upload" type="file" className="hidden" accept="image/*" onChange={handlePictureChange} />
-              </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="h-32 bg-gradient-to-r from-primary-400 to-primary-600"></div>
+        <div className="px-8 pb-8 relative">
+          <div className="relative -mt-16 mb-6 inline-block">
+            <div className="h-32 w-32 rounded-full border-4 border-white bg-white overflow-hidden shadow-md">
+              <img
+                src={profile.avatarUrl || `https://ui-avatars.com/api/?name=${profile.fullName}&background=random`}
+                alt={profile.fullName}
+                className="h-full w-full object-cover"
+              />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Floating Label Input */}
-              <div className="relative">
-                <label htmlFor="name" className="label-float">
-                  <User className="inline-block w-4 h-4 mr-2" /> Name
-                </label>
-                <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="input-float peer" placeholder="Name " required />
-              </div>
-
-              <div className="relative">
-                <label htmlFor="email" className="label-float">
-                  <Mail className="inline-block w-4 h-4 mr-2" /> Email
-                </label>
-                <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-float peer" placeholder="Email " required />
-              </div>
-
-              <div className="relative md:col-span-2">
-                <label htmlFor="mobile" className="label-float">
-                  <Smartphone className="inline-block w-4 h-4 mr-2" /> Mobile Number
-                </label>
-                <input type="tel" id="mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} className="input-float peer" placeholder="Mobile Number" />
-              </div>
-            </div>
-
-            <button type="submit" className="w-full btn-primary-modern py-3">
-              Save Changes
+            <button className="absolute bottom-2 right-2 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors text-gray-600">
+              <Camera className="h-4 w-4" />
             </button>
-          </form>
+          </div>
+
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{profile.fullName}</h1>
+              <p className="text-gray-500 flex items-center gap-2 mt-1">
+                <Mail className="h-4 w-4" /> {profile.email}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* --- Password Update Section --- */}
-      <div className="lg:col-span-1">
-        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 border border-gray-200 h-full">
-          <h2 className="text-xl font-bold text-gray-800 mb-6">Change Password</h2>
-          <form onSubmit={handlePasswordChange} className="space-y-6 flex flex-col h-full">
-            <div className="flex-grow space-y-6">
-              <div className="relative">
-                <input type="password" id="currentPassword" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="input-float peer" placeholder=" " required />
-                <label htmlFor="currentPassword" className="label-float">
-                  <KeyRound className="inline-block w-4 h-4 mr-2" /> Current Password
-                </label>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Profile Settings */}
+        <div className="md:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <User className="h-5 w-5 text-primary-500" />
+            Personal Information
+          </h2>
+
+          {message.text && (
+            <div className={`p-4 mb-4 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {message.text}
+            </div>
+          )}
+
+          <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={profile.fullName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                />
               </div>
-              <div className="relative">
-                <input type="password" id="newPassword" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-float peer" placeholder=" " required />
-                <label htmlFor="newPassword" className="label-float">
-                  <KeyRound className="inline-block w-4 h-4 mr-2" /> New Password
-                </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="tel"
+                    name="mobile"
+                    value={profile.mobile}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-float peer" placeholder=" " required />
-                <label htmlFor="confirmPassword" className="label-float">
-                  <KeyRound className="inline-block w-4 h-4 mr-2" /> Confirm New Password
-                </label>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    name="address"
+                    value={profile.address}
+                    onChange={handleChange}
+                    placeholder="Enter your delivery address"
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={profile.email}
+                    disabled
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+              </div>
+               <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Avatar URL</label>
+                <div className="relative">
+                  <Camera className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    name="avatarUrl"
+                    value={profile.avatarUrl}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
               </div>
             </div>
-            <button type="submit" className="w-full btn-secondary-modern py-3 mt-auto">
+
+            <div className="pt-4 flex justify-end">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex items-center gap-2 px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Security Settings - Placeholder for now */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-fit">
+          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <Lock className="h-5 w-5 text-primary-500" />
+            Security
+          </h2>
+          <form className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+              <input type="password" disabled placeholder="••••••••" className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <input type="password" disabled placeholder="••••••••" className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50" />
+            </div>
+            <button type="button" disabled className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed font-medium">
               Update Password
             </button>
           </form>

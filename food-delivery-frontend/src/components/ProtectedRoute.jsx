@@ -19,8 +19,13 @@ export default function ProtectedRoute({ children, role }) {
     return <Navigate to="/" replace />
   }
 
+  // Normalize roles for comparison
+  const normalizeRole = (r) => r ? r.toUpperCase().replace('ROLE_', '') : '';
+  const userRole = normalizeRole(user.role);
+  const requiredRole = normalizeRole(role);
+
   // Role mismatch → redirect to homepage
-  if (role && user.role !== role) {
+  if (role && userRole !== requiredRole) {
     return <Navigate to="/" replace />
   }
 

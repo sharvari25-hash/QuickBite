@@ -1,32 +1,24 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { Star, Clock, Truck, Heart } from "lucide-react";
-import { mockApi } from "../services/mockApi";
+import { Star, Clock, Truck } from "lucide-react";
+import { api } from "../services/api";
 
-export default function RestaurantSection() {
+export default function RestaurantSection({ onRestaurantClick }) {
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [favorites, setFavorites] = useState(new Set()); 
 
-  // Fetch restaurants from mockApi
+  // Fetch restaurants from api
   useEffect(() => {
     const fetchRestaurants = async () => {
       setIsLoading(true);
       setError("");
       try {
-        const allRestaurants = await mockApi.getRestaurants();
-        
-        // Local filtering
-        let filtered = allRestaurants;
-        if (activeFilter !== "All") {
-          filtered = allRestaurants.filter(r => 
-            r.category && r.category.includes(activeFilter)
-          );
-        }
-        setRestaurants(filtered);
+        const category = activeFilter !== "All" ? activeFilter : null;
+        const data = await api.getRestaurants(category);
+        setRestaurants(data);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -36,16 +28,6 @@ export default function RestaurantSection() {
 
     fetchRestaurants();
   }, [activeFilter]);
-
-  const toggleFavorite = (id) => {
-    const newFavorites = new Set(favorites);
-    if (newFavorites.has(id)) {
-      newFavorites.delete(id);
-    } else {
-      newFavorites.add(id);
-    }
-    setFavorites(newFavorites);
-  };
 
   const filters = ["All", "Pizza", "Burgers", "Chinese", "Biryani", "Indian"]; 
 
@@ -79,12 +61,13 @@ export default function RestaurantSection() {
         {!isLoading && !error && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {restaurants.map((restaurant) => (
-              <div key={restaurant.id} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer group overflow-hidden border">
+              <div 
+                key={restaurant.id} 
+                className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer group overflow-hidden border"
+                onClick={() => onRestaurantClick && onRestaurantClick(restaurant)}
+              >
                 <div className="relative overflow-hidden">
                   <img src={restaurant.image || "/placeholder.svg"} alt={restaurant.name} className="w-full h-48 object-cover group-hover:scale-110 transition-transform" />
-                  <button onClick={() => toggleFavorite(restaurant.id)} className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white">
-                    <Heart className={`h-4 w-4 ${favorites.has(restaurant.id) ? "text-red-500 fill-current" : "text-gray-600"}`} />
-                  </button>
                 </div>
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-3">
@@ -96,7 +79,7 @@ export default function RestaurantSection() {
                   </div>
                   <p className="text-gray-600 text-sm mb-4 font-medium">{restaurant.category}</p>
                   <div className="flex items-center justify-between text-sm text-gray-600">
-                    <div className="flex items-center space-x-1"><Clock className="h-4 w-4 text-primary-500" /><span>{restaurant.estimatedDeliveryTime || 30} min</span></div>
+                    <div className="flex items-center space-x-1"><Clock className="h-4 w-4 text-primary-500" /><span>{restaurant.deliveryTime || 30} min</span></div>
                     <div className="flex items-center space-x-1"><Truck className="h-4 w-4 text-blue-500" /><span>Free Delivery</span></div>
                   </div>
                 </div>

@@ -29,7 +29,7 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
     const fetchCart = async () => {
       setIsLoading(true);
       try {
-        const data = await mockApi.getCart();
+        const data = await api.getCart(user.id);
         setCart(data);
       } catch (err) {
         setError(err.message || "Failed to fetch cart.");
@@ -43,7 +43,7 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
   const handleAddToCart = async (menuItem) => {
     setMutatingItemId(menuItem.id);
     try {
-      const updatedCart = await mockApi.addToCart(menuItem, 1);
+      const updatedCart = await api.addToCart(user.id, menuItem, 1);
       setCart(updatedCart);
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -55,7 +55,7 @@ export default function Cart({ onBrowse, onOrderSuccess }) {
   const handleRemoveFromCart = async (cartItemId) => {
     setMutatingItemId(cartItemId);
     try {
-      const updatedCart = await mockApi.removeFromCart(cartItemId);
+      const updatedCart = await api.removeFromCart(cartItemId);
       setCart(updatedCart);
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -90,7 +90,7 @@ function CartView({ cartItems, onAddToCart, onRemoveFromCart, onCheckout, totalP
           const isMutating = mutatingItemId === cartItem.id || mutatingItemId === cartItem.menuItem.id;
           return (
             <div key={cartItem.id} className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 p-4 bg-gray-50 rounded-lg">
-              <img src={cartItem.menuItem.imageUrl || "/placeholder.svg"} alt={cartItem.menuItem.name} className="w-full sm:w-16 h-24 sm:h-16 object-cover rounded-lg" />
+              <img src={cartItem.menuItem.image || "/placeholder.svg"} alt={cartItem.menuItem.name} className="w-full sm:w-16 h-24 sm:h-16 object-cover rounded-lg" />
               <div className="flex-1"><h3 className="font-semibold">{cartItem.menuItem.name}</h3></div>
               <div className="flex items-center justify-between w-full sm:w-auto">
                 <div className="flex items-center space-x-2">
@@ -112,6 +112,8 @@ function CartView({ cartItems, onAddToCart, onRemoveFromCart, onCheckout, totalP
   );
 }
 
+import { api } from "../services/api"; // Import real API
+
 // --- MOCK PAYMENT PAGE COMPONENT ---
 function MockPaymentPage({ totalPrice, onBack, onOrderSuccess, cart, user }) {
     const [isProcessing, setIsProcessing] = useState(false);
@@ -120,17 +122,23 @@ function MockPaymentPage({ totalPrice, onBack, onOrderSuccess, cart, user }) {
     const handlePayment = async () => {
         setIsProcessing(true);
         try {
-            // Create order via mockApi
-            await mockApi.createOrder({
+            // Transform cart items for backend
+            const orderItems = cart.items.map(item => ({
+                menuItemId: item.menuItem.id,
+                quantity: item.quantity
+            }));
+
+            // Create order via real API
+            await api.createOrder({
                 customerId: user.id,
-                items: cart.items,
+                items: orderItems,
                 totalPrice: parseFloat(totalPrice),
                 deliveryAddress: user.address || 'Default Address',
-                restaurantId: cart.items[0]?.menuItem?.restaurantId || 1 // Assume all items from same restaurant for now
+                restaurantId: cart.items[0]?.menuItem?.restaurantId || 1 
             });
             
-            // Clear cart
-            await mockApi.clearCart();
+            // Clear cart from backend
+            await api.clearCart(user.id);
             
             setSuccess(true);
             setTimeout(() => {
@@ -138,7 +146,7 @@ function MockPaymentPage({ totalPrice, onBack, onOrderSuccess, cart, user }) {
             }, 2000);
             
         } catch (error) {
-            alert("Payment failed: " + error.message);
+            alert("Payment failed: " + (error.response?.data || error.message));
         } finally {
             setIsProcessing(false);
         }

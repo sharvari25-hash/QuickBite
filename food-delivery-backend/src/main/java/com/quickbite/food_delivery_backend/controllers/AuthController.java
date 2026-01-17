@@ -15,13 +15,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.quickbite.food_delivery_backend.models.ERole;
-import com.quickbite.food_delivery_backend.models.User;
+import com.quickbite.food_delivery_backend.models.*;
 import com.quickbite.food_delivery_backend.payload.request.LoginRequest;
 import com.quickbite.food_delivery_backend.payload.request.SignupRequest;
 import com.quickbite.food_delivery_backend.payload.response.JwtResponse;
 import com.quickbite.food_delivery_backend.payload.response.MessageResponse;
 import com.quickbite.food_delivery_backend.repository.UserRepository;
+import com.quickbite.food_delivery_backend.repository.RestaurantRepository;
+import com.quickbite.food_delivery_backend.repository.DeliveryInfoRepository;
 import com.quickbite.food_delivery_backend.security.jwt.JwtUtils;
 import com.quickbite.food_delivery_backend.security.services.UserDetailsImpl;
 
@@ -34,6 +35,12 @@ public class AuthController {
 
   @Autowired
   UserRepository userRepository;
+  
+  @Autowired
+  RestaurantRepository restaurantRepository;
+  
+  @Autowired
+  DeliveryInfoRepository deliveryInfoRepository;
 
   @Autowired
   PasswordEncoder encoder;
@@ -71,25 +78,63 @@ public class AuthController {
           .body(new MessageResponse("Error: Email is already in use!"));
     }
 
-    // Create new user's account
+    // Determine Role
     ERole role = ERole.ROLE_CUSTOMER;
-    
     if (signUpRequest.getRole() != null) {
         try {
             role = ERole.valueOf(signUpRequest.getRole());
         } catch (IllegalArgumentException e) {
-             // Default to customer or throw error?
-             // Let's assume invalid role -> Customer for safety, or error.
-             // For now, let's keep it robust.
+             // Default to customer
         }
+    }
+
+    // Construct Address String
+    String address = null;
+    if (signUpRequest.getAddressLine1() != null) {
+        address = signUpRequest.getAddressLine1() + ", " + 
+                  signUpRequest.getCity() + ", " + 
+                  signUpRequest.getState() + " - " + 
+                  signUpRequest.getPostalCode() + ", " + 
+                  signUpRequest.getCountry();
     }
 
     User user = new User(signUpRequest.getFullName(), 
                signUpRequest.getEmail(),
                encoder.encode(signUpRequest.getPassword()),
                role);
+    
+    user.setMobile(signUpRequest.getMobile());
+    user.setAddress(address);
+    user.setAvatarUrl(signUpRequest.getImageUrl()); // Use image URL as avatar for now
 
-    userRepository.save(user);
+    User savedUser = userRepository.save(user);
+
+    // Handle Role Specific Data
+    if (role == ERole.ROLE_RESTAURANT) {
+        Restaurant restaurant = new Restaurant();
+        restaurant.setName(signUpRequest.getBusinessName());
+        restaurant.setDescription(signUpRequest.getCategories()); // Using categories as description for now
+        restaurant.setImage(signUpRequest.getImageUrl());
+        restaurant.setAddress(address);
+        restaurant.setOwner(savedUser);
+        restaurant.setCategory(signUpRequest.getCategories());
+        restaurant.setRating(0.0); // Default
+        
+        // We might want to set contact info on restaurant too, but User has mobile/email
+        restaurantRepository.save(restaurant);
+        
+    } else if (role == ERole.ROLE_DELIVERY) {
+        DeliveryInfo deliveryInfo = new DeliveryInfo(
+            savedUser,
+            signUpRequest.getVehicleType(),
+            signUpRequest.getVehicleModel(),
+            signUpRequest.getLicenseNumber(),
+            signUpRequest.getVehicleRegistrationNumber(),
+            signUpRequest.getDeliveryZone(),
+            signUpRequest.getIdProofUrl()
+        );
+        deliveryInfoRepository.save(deliveryInfo);
+    }
 
     return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
   }

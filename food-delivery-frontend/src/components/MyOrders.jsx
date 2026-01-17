@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Package, Clock, CheckCircle, Soup, Bike, Loader2 } from 'lucide-react';
-import { mockApi } from '../services/mockApi';
+import { api } from '../services/api';
 
 // --- Child Component: Visual Status Tracker ---
 const StatusTracker = ({ orderStatus, deliveryStatus }) => {
@@ -64,7 +64,7 @@ const OrderItem = ({ order }) => {
         <h4 className="text-sm font-semibold">Items:</h4>
         {order.items?.map(item => (
           <div key={item.id} className="flex items-center space-x-3">
-            <img src={item.menuItem?.imageUrl || "https://via.placeholder.com/150"} alt={item.menuItem?.name} className="h-12 w-12 rounded-md object-cover" />
+            <img src={item.menuItem?.image || "https://via.placeholder.com/150"} alt={item.menuItem?.name} className="h-12 w-12 rounded-md object-cover" />
             <div className="flex-grow">
               <p className="text-sm font-medium">{item.menuItem?.name}</p>
               <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
@@ -93,8 +93,8 @@ export default function MyOrders() {
       }
 
       try {
-        // Use mockApi
-        const data = await mockApi.getOrders(user.role, user.id);
+        // Use real API
+        const data = await api.getOrders(user.id);
         setOrders(data);
       } catch (err) {
         setError(err.message);

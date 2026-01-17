@@ -230,49 +230,6 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }) {
             </button>
           </div>
 
-          {/* Demo Account Buttons */}
-          {mode === "signin" && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-500 mb-3 flex items-center gap-2">
-                    <KeyRound className="h-4 w-4" /> Demo Accounts
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                    <button 
-                        type="button"
-                        onClick={() => handleDemoLogin('customer@quickbite.com', 'password')}
-                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
-                    >
-                        <span className="block font-medium text-gray-900">Customer</span>
-                        <span className="block text-gray-500 text-[10px]">customer@quickbite.com</span>
-                    </button>
-                    <button 
-                         type="button"
-                        onClick={() => handleDemoLogin('restaurant@quickbite.com', 'password')}
-                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
-                    >
-                        <span className="block font-medium text-gray-900">Restaurant</span>
-                        <span className="block text-gray-500 text-[10px]">restaurant@quickbite.com</span>
-                    </button>
-                    <button 
-                         type="button"
-                        onClick={() => handleDemoLogin('delivery@quickbite.com', 'password')}
-                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
-                    >
-                        <span className="block font-medium text-gray-900">Delivery</span>
-                        <span className="block text-gray-500 text-[10px]">delivery@quickbite.com</span>
-                    </button>
-                    <button 
-                         type="button"
-                        onClick={() => handleDemoLogin('admin@quickbite.com', 'password')}
-                        className="text-xs py-2 px-3 bg-white border border-gray-200 rounded hover:bg-gray-50 text-left transition-colors"
-                    >
-                        <span className="block font-medium text-gray-900">Admin</span>
-                        <span className="block text-gray-500 text-[10px]">admin@quickbite.com</span>
-                    </button>
-                </div>
-            </div>
-          )}
-
           {mode === "signup" && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">I am signing up as a</label>

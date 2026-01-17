@@ -26,11 +26,17 @@ export default function LandingPage() {
     setAuthMode(authMode === "signin" ? "signup" : "signin")
   }
 
+  const handleRestaurantClick = (restaurant) => {
+    // Save the restaurant ID to local storage to redirect after login
+    localStorage.setItem("redirectRestaurantId", restaurant.id)
+    handleSignInClick()
+  }
+
   return (
     <div className="min-h-screen">
       <Navbar onSignInClick={handleSignInClick} onSignUpClick={handleSignUpClick} />
       <HeroSection />
-      <RestaurantSection />
+      <RestaurantSection onRestaurantClick={handleRestaurantClick} />
       <CitiesSection />
       <Footer />
 

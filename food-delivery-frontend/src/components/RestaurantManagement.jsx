@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Search, Edit, Trash2 } from "lucide-react";
 import Modal from "./Modal"; 
-import { mockApi } from "../services/mockApi";
+import { api } from "../services/api";
 
 export default function RestaurantManagement() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function RestaurantManagement() {
     setIsLoading(true);
     setError("");
     try {
-      const allRestaurants = await mockApi.getRestaurants();
+      const allRestaurants = await api.getRestaurants();
       setRestaurants(allRestaurants);
     } catch (err) {
       setError(err.message);
