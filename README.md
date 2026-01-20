@@ -1,4 +1,4 @@
-# Food-Delivery-App 
+# Food-Delivery-App
 
  	QuickEats – Project Documentation
 The Vision: More Than Just an App
